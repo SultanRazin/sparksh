@@ -5,6 +5,7 @@
 .idea
 *.iml
 .bsp
+spark/.bsp
 out
 gen
 
