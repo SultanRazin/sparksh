@@ -16,6 +16,7 @@
   "dependencies": {
     "@opentui/core": "^0.1.75",
     "@opentui/react": "^0.1.75",
+    "prettier": "^3.8.1",
     "react": "^19.2.3"
   }
 }

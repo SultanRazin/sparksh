@@ -1,8 +1,8 @@
 import { createCliRenderer, type TextareaRenderable } from "@opentui/core";
 import { createRoot, useKeyboard } from "@opentui/react";
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSpark } from "./useSpark";
-import { highlighter, syntaxStyle, getStyleId } from "./highlight";
+import { getStyleId, highlighter, syntaxStyle } from "./highlight";
 
 function App() {
   const { status, history, error, evaluate, complete } = useSpark();
@@ -10,6 +10,7 @@ function App() {
   const [completions, setCompletions] = useState<string[]>([]);
   const [completionIdx, setCompletionIdx] = useState(0);
   const [completionCursor, setCompletionCursor] = useState(0);
+  const [completionFilter, setCompletionFilter] = useState("");
   const ref = useRef<TextareaRenderable>(null);
 
   // Syntax highlighting
@@ -19,11 +20,18 @@ function App() {
     ta.clearAllHighlights();
     if (!code) return;
 
-    const { tokens } = highlighter.codeToTokens(code, { lang: "scala", theme: "github-dark" });
+    const { tokens } = highlighter.codeToTokens(code, {
+      lang: "scala",
+      theme: "github-dark",
+    });
     tokens.forEach((line, lineIdx) => {
       let col = 0;
       line.forEach(({ content, color }) => {
-        ta.addHighlight(lineIdx, { start: col, end: col + content.length, styleId: getStyleId(color || "#fff") });
+        ta.addHighlight(lineIdx, {
+          start: col,
+          end: col + content.length,
+          styleId: getStyleId(color || "#fff"),
+        });
         col += content.length;
       });
     });
@@ -57,6 +65,15 @@ function App() {
     }
     setCode(newCode);
     setCompletions([]);
+  };
+
+  const filterCompletion = (filter: string) => {
+    setCompletionFilter(filter);
+    if (!filter) return;
+    setCompletions((completions) =>
+      completions.filter((c) => c.toLowerCase().includes(filter.toLowerCase())),
+    );
+    setCompletionIdx(0);
   };
 
   useKeyboard((key) => {
@@ -93,27 +110,51 @@ function App() {
     <box style={{ flexDirection: "column", flexGrow: 1 }}>
       {/* Status bar */}
       <box style={{ height: 1 }}>
-        <text style={{ fg: status === "ready" ? "#4a4" : status === "error" ? "#f44" : "#888" }}>
+        <text
+          style={{
+            fg:
+              status === "ready"
+                ? "#4a4"
+                : status === "error"
+                  ? "#f44"
+                  : "#888",
+          }}
+        >
           {status === "starting" && "Starting Spark..."}
-          {status === "ready" && "Ready (Cmd+Enter to execute, Tab for completions)"}
+          {status === "ready" &&
+            "Ready (Cmd+Enter to execute, Tab for completions)"}
           {status === "executing" && "Executing..."}
           {status === "error" && `Error: ${error}`}
           {status === "stopped" && "Stopped"}
         </text>
       </box>
-      
 
       {/* Output history */}
-      <scrollbox style={{ flexGrow: 1, border: true, stickyScroll: true, stickyStart: "bottom" }} focused={completions.length === 0 && status !== "ready"}>
+      <scrollbox
+        style={{
+          flexGrow: 1,
+          border: true,
+          stickyScroll: true,
+          stickyStart: "bottom",
+        }}
+        focused={completions.length === 0 && status !== "ready"}
+      >
         {history.length === 0 ? (
           <text style={{ fg: "#666" }}>Output will appear here...</text>
         ) : (
           history.flatMap((h, i) => [
-            <text key={`c${i}`} style={{ fg: "#6cf" }}>{">>> " + h.code}</text>,
+            <text key={`c${i}`} style={{ fg: "#6cf" }}>
+              {">>> " + h.code}
+            </text>,
             ...h.output.split("\n").map((line, j) => (
-              <text key={`o${i}-${j}`} style={{ fg: h.isError ? "#f44" : "#fff" }}>{line}</text>
+              <text
+                key={`o${i}-${j}`}
+                style={{ fg: h.isError ? "#f44" : "#fff" }}
+              >
+                {line}
+              </text>
             )),
-            <text key={`s${i}`}>{" "}</text>
+            <text key={`s${i}`}> </text>,
           ])
         )}
       </scrollbox>
@@ -133,26 +174,51 @@ function App() {
       </box>
 
       {/* Completions dropdown */}
-      {completions.length > 0 && (() => {
-        const maxVisible = 5;
-        const start = Math.max(0, Math.min(completionIdx - 2, completions.length - maxVisible));
-        const visible = completions.slice(start, start + maxVisible);
-        return (
-          <box key={`c-${completionIdx}`} style={{ border: true, flexDirection: "column", width: "100%" }}>
-            {visible.map((c, i) => {
-              const selected = start + i === completionIdx;
-              return (
-                <box key={`${c}-${i}`} style={{ height: 1 }}>
-                  <text style={{ fg: selected ? "#ff0" : "#fff" }}>{selected ? "> " : "  "}{c}</text>
-                </box>
-              );
-            })}
-            {completions.length > maxVisible && (
-              <text style={{ fg: "#888" }}>{completionIdx + 1}/{completions.length}</text>
-            )}
-          </box>
-        );
-      })()}
+      {completions.length > 0 &&
+        (() => {
+          const maxVisible = 5;
+          const start = Math.max(
+            0,
+            Math.min(completionIdx - 2, completions.length - maxVisible),
+          );
+          const visible = completions.slice(start, start + maxVisible);
+          return (
+            <>
+              <input
+                placeholder="Type here..."
+                focused
+                onInput={(filter) => filterCompletion(filter)}
+                onSubmit={(value) => console.log("Submitted:", value)}
+              />
+              <box
+                key={`c-${completionIdx}`}
+                style={{
+                  border: true,
+                  flexDirection: "column",
+                  width: "100%",
+                  minHeight: 5,
+                }}
+              >
+                {visible.map((c, i) => {
+                  const selected = start + i === completionIdx;
+                  return (
+                    <box key={`${c}-${i}`} style={{ height: 1 }}>
+                      <text style={{ fg: selected ? "#ff0" : "#fff" }}>
+                        {selected ? "> " : "  "}
+                        {c}
+                      </text>
+                    </box>
+                  );
+                })}
+                {completions.length > maxVisible && (
+                  <text style={{ fg: "#888" }}>
+                    {completionIdx + 1}/{completions.length}
+                  </text>
+                )}
+              </box>
+            </>
+          );
+        })()}
     </box>
   );
 }
