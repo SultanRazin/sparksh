@@ -1,80 +1,16 @@
-import { createCliRenderer, SyntaxStyle, RGBA, type TextareaRenderable } from "@opentui/core";
+import { createCliRenderer, type TextareaRenderable } from "@opentui/core";
 import { createRoot, useKeyboard } from "@opentui/react";
-import { createHighlighter } from "shiki";
 import { useRef, useEffect, useState } from "react";
-import { resolve } from "path";
-import { appendFileSync } from "fs";
-
-const log = (...args: unknown[]) => appendFileSync("debug.log", args.map(String).join(" ") + "\n");
-
-const JAR_PATH = resolve("../spark/target/scala-2.13/sparksh-backend-assembly-0.1.0.jar");
-
-const highlighter = await createHighlighter({ themes: ["github-dark"], langs: ["scala"] });
-const syntaxStyle = SyntaxStyle.create();
-const styleIds = new Map<string, number>();
-
-const getStyleId = (color: string) =>
-  styleIds.get(color) ?? styleIds.set(color, syntaxStyle.registerStyle(color, { fg: RGBA.fromHex(color) })).get(color)!;
-
-type Status = "starting" | "ready" | "executing" | "error" | "stopped";
-type HistoryEntry = { code: string; output: string; isError: boolean };
+import { useSpark } from "./useSpark";
+import { highlighter, syntaxStyle, getStyleId } from "./highlight";
 
 function App() {
+  const { status, history, error, evaluate, complete } = useSpark();
   const [code, setCode] = useState("");
-  const [status, setStatus] = useState<Status>("starting");
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [error, setError] = useState("");
+  const [completions, setCompletions] = useState<string[]>([]);
+  const [completionIdx, setCompletionIdx] = useState(0);
+  const [completionCursor, setCompletionCursor] = useState(0);
   const ref = useRef<TextareaRenderable>(null);
-  const stdinRef = useRef<import("bun").FileSink | null>(null);
-  const pendingRef = useRef<((res: { status: string; output?: string }) => void) | null>(null);
-
-  useEffect(() => {
-    const proc = Bun.spawn(["spark-submit", "--class", "Main", JAR_PATH], {
-      stdin: "pipe",
-      stdout: "pipe",
-      stderr: "ignore",
-    });
-
-    stdinRef.current = proc.stdin;
-
-    // Read stdout
-    const reader = proc.stdout.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    (async () => {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const res = JSON.parse(line);
-            if (res.status === "ready") setStatus("ready");
-            else if (res.status === "bye") setStatus("stopped");
-            else if (pendingRef.current) {
-              pendingRef.current(res);
-              pendingRef.current = null;
-            }
-          } catch {}
-        }
-      }
-      setStatus("stopped");
-    })();
-
-    proc.exited.then((code) => {
-      if (code !== 0) {
-        setStatus("error");
-        setError(`Process exited with code ${code}`);
-      }
-    });
-
-    return () => proc.kill();
-  }, []);
 
   // Syntax highlighting
   useEffect(() => {
@@ -95,60 +31,128 @@ function App() {
 
   const submit = async () => {
     if (!code.trim() || status !== "ready") return;
-    setStatus("executing");
-
-    const res = await new Promise<{ status: string; output?: string }>((resolve) => {
-      pendingRef.current = resolve;
-      stdinRef.current?.write(JSON.stringify({ cmd: "eval", code }) + "\n");
-      stdinRef.current?.flush();
-    });
-
-    setHistory((h) => [...h, { code, output: res.output ?? "", isError: res.status === "error" }]);
+    setCompletions([]);
+    await evaluate(code);
     setCode("");
     ref.current?.clear();
-    setStatus("ready");
+  };
+
+  const requestCompletion = async () => {
+    if (status !== "ready" || !code) return;
+    const res = await complete(code);
+    if (res.completions.length) {
+      setCompletions(res.completions);
+      setCompletionCursor(res.cursor);
+      setCompletionIdx(0);
+    }
+  };
+
+  const applyCompletion = (completion: string) => {
+    const newCode = code.slice(0, completionCursor) + completion;
+    const ta = ref.current as any;
+    if (ta) {
+      ta.clear();
+      ta.insertText(newCode);
+      ta.gotoBufferEnd();
+    }
+    setCode(newCode);
+    setCompletions([]);
   };
 
   useKeyboard((key) => {
-    log("key:", JSON.stringify(key));
-    // Ctrl+Enter or Ctrl+J to submit (Ctrl+J works in more terminals)
-    if ((key.name === "return" && key.meta) || (key.name === "j" && key.ctrl)) submit();
+    if (completions.length > 0) {
+      if (key.name === "down" || (key.name === "n" && key.ctrl)) {
+        setCompletionIdx((i) => Math.min(i + 1, completions.length - 1));
+        return;
+      }
+      if (key.name === "up" || (key.name === "p" && key.ctrl)) {
+        setCompletionIdx((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (key.name === "return" || key.name === "tab") {
+        applyCompletion(completions[completionIdx]);
+        return;
+      }
+      if (key.name === "escape") {
+        setCompletions([]);
+        return;
+      }
+    }
+
+    if (key.name === "tab" && status === "ready") {
+      requestCompletion();
+      return;
+    }
+
+    if ((key.name === "return" && key.meta) || (key.name === "j" && key.ctrl)) {
+      submit();
+    }
   });
 
   return (
     <box style={{ flexDirection: "column", flexGrow: 1 }}>
+      {/* Status bar */}
       <box style={{ height: 1 }}>
         <text style={{ fg: status === "ready" ? "#4a4" : status === "error" ? "#f44" : "#888" }}>
           {status === "starting" && "Starting Spark..."}
-          {status === "ready" && "Ready (Ctrl+Enter to execute)"}
+          {status === "ready" && "Ready (Cmd+Enter to execute, Tab for completions)"}
           {status === "executing" && "Executing..."}
           {status === "error" && `Error: ${error}`}
           {status === "stopped" && "Stopped"}
         </text>
       </box>
+      
 
-      <box style={{ flexGrow: 1, border: true, flexDirection: "column" }}>
+      {/* Output history */}
+      <scrollbox style={{ flexGrow: 1, border: true, stickyScroll: true, stickyStart: "bottom" }} focused={completions.length === 0 && status !== "ready"}>
         {history.length === 0 ? (
           <text style={{ fg: "#666" }}>Output will appear here...</text>
         ) : (
-          history.map((h, i) => (
-            <box key={i} style={{ flexDirection: "column", marginBottom: 1 }}>
-              <text style={{ fg: "#6cf" }}>{">>> " + h.code}</text>
-              <text style={{ fg: h.isError ? "#f44" : "#fff" }}>{h.output}</text>
-            </box>
-          ))
+          history.flatMap((h, i) => [
+            <text key={`c${i}`} style={{ fg: "#6cf" }}>{">>> " + h.code}</text>,
+            ...h.output.split("\n").map((line, j) => (
+              <text key={`o${i}-${j}`} style={{ fg: h.isError ? "#f44" : "#fff" }}>{line}</text>
+            )),
+            <text key={`s${i}`}>{" "}</text>
+          ])
         )}
-      </box>
+      </scrollbox>
 
+      {/* Code editor */}
       <box style={{ border: true, height: 10 }}>
         <textarea
           ref={ref}
-          placeholder="Enter Scala code... (Ctrl+Enter to run)"
-          focused={status === "ready"}
+          placeholder="Enter Scala code... (Tab for completions)"
+          focused={status === "ready" && completions.length === 0}
           syntaxStyle={syntaxStyle}
-          onContentChange={() => setCode(ref.current?.plainText ?? "")}
+          onContentChange={() => {
+            setCode(ref.current?.plainText ?? "");
+            setCompletions([]);
+          }}
         />
       </box>
+
+      {/* Completions dropdown */}
+      {completions.length > 0 && (() => {
+        const maxVisible = 5;
+        const start = Math.max(0, Math.min(completionIdx - 2, completions.length - maxVisible));
+        const visible = completions.slice(start, start + maxVisible);
+        return (
+          <box key={`c-${completionIdx}`} style={{ border: true, flexDirection: "column", width: "100%" }}>
+            {visible.map((c, i) => {
+              const selected = start + i === completionIdx;
+              return (
+                <box key={`${c}-${i}`} style={{ height: 1 }}>
+                  <text style={{ fg: selected ? "#ff0" : "#fff" }}>{selected ? "> " : "  "}{c}</text>
+                </box>
+              );
+            })}
+            {completions.length > maxVisible && (
+              <text style={{ fg: "#888" }}>{completionIdx + 1}/{completions.length}</text>
+            )}
+          </box>
+        );
+      })()}
     </box>
   );
 }

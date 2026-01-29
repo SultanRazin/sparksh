@@ -42,7 +42,8 @@ object Main {
           val cmd = request("cmd").str
 
           cmd match {
-            case "eval" => val code = request("code").str
+            case "eval" =>
+              val code = request("code").str
               replOutput.getBuffer.setLength(0)
               switchableOut.startCapture()
 
@@ -60,9 +61,29 @@ object Main {
                 case Results.Incomplete => "incomplete"
               }
               originalOut.println(write(Obj("status" -> status, "output" -> output)))
-            case "quit" => running = false
+
+            case "complete" =>
+              val code = request("code").str
+              val cursor = request.obj.get("cursor").map(_.num.toInt).getOrElse(code.length)
+              val result = repl.intp.presentationCompile(cursor, code)
+              result match {
+                case Left(_) =>
+                  originalOut.println(write(Obj("status" -> "ok", "completions" -> Arr(), "cursor" -> cursor)))
+                case Right(r) =>
+                  val (completionCursor, candidates) = r.candidates(0)
+                  originalOut.println(write(Obj(
+                    "status" -> "ok",
+                    "completions" -> candidates.take(50),
+                    "cursor" -> completionCursor
+                  )))
+              }
+
+            case "quit" =>
+              running = false
               originalOut.println(write(Obj("status" -> "bye")))
-            case _ => originalOut.println(write(Obj("status" -> "error", "output" -> s"Unknown command: $cmd")))
+
+            case _ =>
+              originalOut.println(write(Obj("status" -> "error", "output" -> s"Unknown command: $cmd")))
           }
         } catch {
           case e: Exception => switchableOut.stopCapture()
