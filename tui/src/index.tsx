@@ -119,7 +119,7 @@ function App() {
       </scrollbox>
 
       {/* Code editor */}
-      <box style={{ border: true, height: 10 }}>
+      <box style={{ border: true, minHeight: 5, maxHeight: 50 }}>
         <textarea
           ref={ref}
           placeholder="Enter Scala code... (Tab for completions)"
