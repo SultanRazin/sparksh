@@ -1,4 +1,9 @@
-import { createCliRenderer, type TextareaRenderable, t, fg } from "@opentui/core";
+import {
+  createCliRenderer,
+  type TextareaRenderable,
+  t,
+  fg,
+} from "@opentui/core";
 import { createRoot, useKeyboard } from "@opentui/react";
 import { useEffect, useRef, useState } from "react";
 import { useSpark } from "./useSpark";
@@ -147,20 +152,30 @@ function App() {
         focused={popupMode === "none" && status !== "ready"}
       >
         {history.length === 0 ? (
-          <box style={{ flexGrow: 1, justifyContent: "center", alignItems: "center" }}>
-            <ascii-font text="SparkSH" font="block" style={{ fg: "#666" }} />
+          <box
+            style={{
+              flexGrow: 1,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <ascii-font text="SparkSH" font="block" />
           </box>
         ) : (
           history.flatMap((h, i) => [
             <text key={`c${i}`} style={{ fg: "#6cf" }}>
               {">>> " + h.code}
             </text>,
-            ...h.output.split("\n").map((line, j) => (
-              <text
-                key={`o${i}-${j}`}
-                content={h.isError ? errorLine(line) : highlightOutputLine(line)}
-              />
-            )),
+            ...h.output
+              .split("\n")
+              .map((line, j) => (
+                <text
+                  key={`o${i}-${j}`}
+                  content={
+                    h.isError ? errorLine(line) : highlightOutputLine(line)
+                  }
+                />
+              )),
             <text key={`s${i}`}> </text>,
           ])
         )}

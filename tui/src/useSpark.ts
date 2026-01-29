@@ -111,10 +111,12 @@ export function useSpark() {
     return res;
   };
 
-  const complete = async (code: string) => {
+  const complete = async (code: string, cursor?: number) => {
+    const effectiveCursor = cursor ?? code.trimEnd().length;
     const res = await request<{ completions: string[]; cursor: number }>({
       cmd: "complete",
       code,
+      cursor: effectiveCursor,
     });
     const unique = [...new Set(res.completions?.filter((c) => c.trim()) ?? [])];
     return { completions: unique, cursor: res.cursor };
