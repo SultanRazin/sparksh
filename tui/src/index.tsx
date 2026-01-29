@@ -1,4 +1,4 @@
-import { createCliRenderer, type TextareaRenderable } from "@opentui/core";
+import { createCliRenderer, type TextareaRenderable, t, fg } from "@opentui/core";
 import { createRoot, useKeyboard } from "@opentui/react";
 import { useEffect, useRef, useState } from "react";
 import { useSpark } from "./useSpark";
@@ -7,6 +7,22 @@ import { FilterablePopup } from "./FilterablePopup";
 import { highlightOutputLine, errorLine } from "./highlightOutput";
 
 type PopupMode = "none" | "completions" | "history";
+type Status = "starting" | "ready" | "executing" | "error" | "stopped";
+
+function getStatusBar(status: Status, error: string) {
+  switch (status) {
+    case "starting":
+      return t`${fg("#888")("⏳ Starting...")}`;
+    case "ready":
+      return t`${fg("#4a4")("⚡ Ready")}  ${fg("#aaa")("⌘↵")} ${fg("#888")("Run")} ${fg("#666")("·")} ${fg("#aaa")("⇥")} ${fg("#888")("Complete")} ${fg("#666")("·")} ${fg("#aaa")("^R")} ${fg("#888")("History")}`;
+    case "executing":
+      return t`${fg("#fa0")("⚙ Running...")}`;
+    case "error":
+      return t`${fg("#f44")(`✗ Error: ${error}`)}`;
+    case "stopped":
+      return t`${fg("#888")("⏹ Stopped")}`;
+  }
+}
 
 function App() {
   const { status, history, storedHistory, error, evaluate, complete } =
@@ -117,23 +133,7 @@ function App() {
     <box style={{ flexDirection: "column", flexGrow: 1, position: "relative" }}>
       {/* Status bar */}
       <box style={{ height: 1 }}>
-        <text
-          style={{
-            fg:
-              status === "ready"
-                ? "#4a4"
-                : status === "error"
-                  ? "#f44"
-                  : "#888",
-          }}
-        >
-          {status === "starting" && "Starting Spark..."}
-          {status === "ready" &&
-            "Ready (Cmd+Enter to run, Tab completions, Ctrl+R history)"}
-          {status === "executing" && "Executing..."}
-          {status === "error" && `Error: ${error}`}
-          {status === "stopped" && "Stopped"}
-        </text>
+        <text content={getStatusBar(status as Status, error)} />
       </box>
 
       {/* Output history */}
@@ -147,7 +147,9 @@ function App() {
         focused={popupMode === "none" && status !== "ready"}
       >
         {history.length === 0 ? (
-          <text style={{ fg: "#666" }}>Output will appear here...</text>
+          <box style={{ flexGrow: 1, justifyContent: "center", alignItems: "center" }}>
+            <ascii-font text="SparkSH" font="block" style={{ fg: "#666" }} />
+          </box>
         ) : (
           history.flatMap((h, i) => [
             <text key={`c${i}`} style={{ fg: "#6cf" }}>
