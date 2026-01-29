@@ -7,10 +7,18 @@ import { getStyleId, highlighter, syntaxStyle } from "./highlight";
 function App() {
   const { status, history, error, evaluate, complete } = useSpark();
   const [code, setCode] = useState("");
-  const [completions, setCompletions] = useState<string[]>([]);
+  const [allCompletions, setAllCompletions] = useState<string[]>([]);
+  const [completionFilter, setCompletionFilter] = useState("");
   const [completionIdx, setCompletionIdx] = useState(0);
   const [completionCursor, setCompletionCursor] = useState(0);
-  const [completionFilter, setCompletionFilter] = useState("");
+
+  const completions = completionFilter
+    ? allCompletions.filter((c) =>
+        c.toLowerCase().includes(completionFilter.toLowerCase()),
+      )
+    : allCompletions;
+
+  const safeIdx = Math.min(completionIdx, Math.max(0, completions.length - 1));
   const ref = useRef<TextareaRenderable>(null);
 
   // Syntax highlighting
@@ -39,7 +47,8 @@ function App() {
 
   const submit = async () => {
     if (!code.trim() || status !== "ready") return;
-    setCompletions([]);
+    setAllCompletions([]);
+    setCompletionFilter("");
     await evaluate(code);
     setCode("");
     ref.current?.clear();
@@ -49,7 +58,8 @@ function App() {
     if (status !== "ready" || !code) return;
     const res = await complete(code);
     if (res.completions.length) {
-      setCompletions(res.completions);
+      setAllCompletions(res.completions);
+      setCompletionFilter("");
       setCompletionCursor(res.cursor);
       setCompletionIdx(0);
     }
@@ -64,20 +74,12 @@ function App() {
       ta.gotoBufferEnd();
     }
     setCode(newCode);
-    setCompletions([]);
-  };
-
-  const filterCompletion = (filter: string) => {
-    setCompletionFilter(filter);
-    if (!filter) return;
-    setCompletions((completions) =>
-      completions.filter((c) => c.toLowerCase().includes(filter.toLowerCase())),
-    );
-    setCompletionIdx(0);
+    setAllCompletions([]);
+    setCompletionFilter("");
   };
 
   useKeyboard((key) => {
-    if (completions.length > 0) {
+    if (allCompletions.length > 0) {
       if (key.name === "down" || (key.name === "n" && key.ctrl)) {
         setCompletionIdx((i) => Math.min(i + 1, completions.length - 1));
         return;
@@ -87,11 +89,12 @@ function App() {
         return;
       }
       if (key.name === "return" || key.name === "tab") {
-        applyCompletion(completions[completionIdx]);
+        applyCompletion(completions[safeIdx]);
         return;
       }
       if (key.name === "escape") {
-        setCompletions([]);
+        setAllCompletions([]);
+        setCompletionFilter("");
         return;
       }
     }
@@ -107,7 +110,7 @@ function App() {
   });
 
   return (
-    <box style={{ flexDirection: "column", flexGrow: 1 }}>
+    <box style={{ flexDirection: "column", flexGrow: 1, position: "relative" }}>
       {/* Status bar */}
       <box style={{ height: 1 }}>
         <text
@@ -137,7 +140,7 @@ function App() {
           stickyScroll: true,
           stickyStart: "bottom",
         }}
-        focused={completions.length === 0 && status !== "ready"}
+        focused={allCompletions.length === 0 && status !== "ready"}
       >
         {history.length === 0 ? (
           <text style={{ fg: "#666" }}>Output will appear here...</text>
@@ -160,63 +163,72 @@ function App() {
       </scrollbox>
 
       {/* Code editor */}
-      <box style={{ border: true, minHeight: 5, maxHeight: 50 }}>
+      <box style={{ border: true, minHeight: 5, maxHeight: 10 }}>
         <textarea
           ref={ref}
           placeholder="Enter Scala code... (Tab for completions)"
-          focused={status === "ready" && completions.length === 0}
+          focused={status === "ready" && allCompletions.length === 0}
           syntaxStyle={syntaxStyle}
           onContentChange={() => {
             setCode(ref.current?.plainText ?? "");
-            setCompletions([]);
+            setAllCompletions([]);
+            setCompletionFilter("");
           }}
         />
       </box>
 
-      {/* Completions dropdown */}
-      {completions.length > 0 &&
+      {/* Completions popup */}
+      {allCompletions.length > 0 &&
         (() => {
           const maxVisible = 5;
           const start = Math.max(
             0,
-            Math.min(completionIdx - 2, completions.length - maxVisible),
+            Math.min(safeIdx - 2, completions.length - maxVisible),
           );
           const visible = completions.slice(start, start + maxVisible);
           return (
-            <>
+            <box
+              style={{
+                position: "absolute",
+                bottom: 11,
+                left: 0,
+                right: 0,
+                border: true,
+                flexDirection: "column",
+                backgroundColor: "#1a1a1a",
+              }}
+            >
               <input
-                placeholder="Type here..."
+                placeholder="Filter..."
                 focused
-                onInput={(filter) => filterCompletion(filter)}
-                onSubmit={(value) => console.log("Submitted:", value)}
-              />
-              <box
-                key={`c-${completionIdx}`}
-                style={{
-                  border: true,
-                  flexDirection: "column",
-                  width: "100%",
-                  minHeight: 5,
+                onInput={(filter) => {
+                  setCompletionFilter(filter);
+                  setCompletionIdx(0);
                 }}
-              >
-                {visible.map((c, i) => {
-                  const selected = start + i === completionIdx;
-                  return (
-                    <box key={`${c}-${i}`} style={{ height: 1 }}>
-                      <text style={{ fg: selected ? "#ff0" : "#fff" }}>
-                        {selected ? "> " : "  "}
-                        {c}
-                      </text>
-                    </box>
-                  );
-                })}
-                {completions.length > maxVisible && (
-                  <text style={{ fg: "#888" }}>
-                    {completionIdx + 1}/{completions.length}
+                onSubmit={() =>
+                  completions.length > 0 &&
+                  applyCompletion(completions[safeIdx])
+                }
+              />
+              {completions.length === 0 ? (
+                <text style={{ fg: "#888" }}>No matches</text>
+              ) : (
+                visible.map((c, i) => (
+                  <text
+                    key={`${c}-${i}`}
+                    style={{ fg: start + i === safeIdx ? "#ff0" : "#fff" }}
+                  >
+                    {start + i === safeIdx ? "> " : "  "}
+                    {c}
                   </text>
-                )}
-              </box>
-            </>
+                ))
+              )}
+              {completions.length > maxVisible && (
+                <text style={{ fg: "#888" }}>
+                  {safeIdx + 1}/{completions.length}
+                </text>
+              )}
+            </box>
           );
         })()}
     </box>
