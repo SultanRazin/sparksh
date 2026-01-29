@@ -1,33 +1,19 @@
 import { createCliRenderer, type TextareaRenderable } from "@opentui/core";
 import { createRoot, useKeyboard } from "@opentui/react";
 import { useEffect, useRef, useState } from "react";
-import { appendFileSync } from "fs";
 import { useSpark } from "./useSpark";
 import { getStyleId, highlighter, syntaxStyle } from "./highlight";
+import { FilterablePopup } from "./FilterablePopup";
 
-const log = (...args: unknown[]) =>
-  appendFileSync(
-    "debug.log",
-    args
-      .map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a)))
-      .join(" ") + "\n",
-  );
+type PopupMode = "none" | "completions" | "history";
 
 function App() {
-  const { status, history, error, evaluate, complete } = useSpark();
+  const { status, history, storedHistory, error, evaluate, complete } =
+    useSpark();
   const [code, setCode] = useState("");
-  const [allCompletions, setAllCompletions] = useState<string[]>([]);
-  const [completionFilter, setCompletionFilter] = useState("");
-  const [completionIdx, setCompletionIdx] = useState(0);
+  const [popupMode, setPopupMode] = useState<PopupMode>("none");
+  const [completionItems, setCompletionItems] = useState<string[]>([]);
   const [completionCursor, setCompletionCursor] = useState(0);
-
-  const completions = completionFilter
-    ? allCompletions.filter((c) =>
-        c.toLowerCase().includes(completionFilter.toLowerCase()),
-      )
-    : allCompletions;
-
-  const safeIdx = Math.min(completionIdx, Math.max(0, completions.length - 1));
   const ref = useRef<TextareaRenderable>(null);
 
   // Syntax highlighting
@@ -54,10 +40,20 @@ function App() {
     });
   }, [code]);
 
+  const resetInputWithNewCode = (newCode: string) => {
+    const ta = ref.current as any;
+    if (ta) {
+      ta.clear();
+      ta.insertText(newCode);
+      ta.gotoBufferEnd();
+    }
+    setCode(newCode);
+    setPopupMode("none");
+  };
+
   const submit = async () => {
     if (!code.trim() || status !== "ready") return;
-    setAllCompletions([]);
-    setCompletionFilter("");
+    setPopupMode("none");
     await evaluate(code);
     setCode("");
     ref.current?.clear();
@@ -67,50 +63,24 @@ function App() {
     if (status !== "ready" || !code) return;
     const res = await complete(code);
     if (res.completions.length) {
-      setAllCompletions(res.completions);
-      setCompletionFilter("");
+      setCompletionItems(res.completions);
       setCompletionCursor(res.cursor);
-      setCompletionIdx(0);
+      setPopupMode("completions");
     }
   };
-
-  function resetInputWithNewCode(ta, newCode: string) {
-    if (ta) {
-      ta.clear();
-      ta.insertText(newCode);
-      ta.gotoBufferEnd();
-    }
-    setCode(newCode);
-    setAllCompletions([]);
-    setCompletionFilter("");
-  }
 
   const applyCompletion = (completion: string) => {
     const newCode = code.slice(0, completionCursor) + completion;
-    const ta = ref.current as any;
-    resetInputWithNewCode(ta, newCode);
+    resetInputWithNewCode(newCode);
+  };
+
+  const applyHistory = (historyCode: string) => {
+    resetInputWithNewCode(historyCode);
   };
 
   useKeyboard((key) => {
-    if (allCompletions.length > 0) {
-      if (key.name === "down" || (key.name === "n" && key.ctrl)) {
-        setCompletionIdx((i) => Math.min(i + 1, completions.length - 1));
-        return;
-      }
-      if (key.name === "up" || (key.name === "p" && key.ctrl)) {
-        setCompletionIdx((i) => Math.max(i - 1, 0));
-        return;
-      }
-      if (key.name === "return" || key.name === "tab") {
-        applyCompletion(completions[safeIdx]);
-        return;
-      }
-      if (key.name === "escape") {
-        setAllCompletions([]);
-        setCompletionFilter("");
-        return;
-      }
-    }
+    // When popup is open, let it handle keys
+    if (popupMode !== "none") return;
 
     if (key.name === "tab" && status === "ready") {
       requestCompletion();
@@ -119,15 +89,28 @@ function App() {
 
     if ((key.name === "return" && key.meta) || (key.name === "j" && key.ctrl)) {
       submit();
+      return;
     }
 
-    if (code == "" && history.length > 0 && key.name === "up") {
+    // Ctrl+R for history search
+    if (key.name === "r" && key.ctrl && combinedHistory.length > 0) {
+      setPopupMode("history");
+      return;
+    }
+
+    // Up arrow when empty to get last command
+    if (code === "" && history.length > 0 && key.name === "up") {
       const prev = history[history.length - 1];
-      if (prev) {
-        resetInputWithNewCode(ref.current, prev.code);
-      }
+      if (prev) resetInputWithNewCode(prev.code);
     }
   });
+
+  const storedHistoryCommands = storedHistory.map((h) => h.code);
+  const combinedHistory = [
+    ...storedHistoryCommands,
+    ...history.map((h) => h.code),
+  ];
+  const historyCommands = Array.from(new Set(combinedHistory)).reverse();
 
   return (
     <box style={{ flexDirection: "column", flexGrow: 1, position: "relative" }}>
@@ -145,7 +128,7 @@ function App() {
         >
           {status === "starting" && "Starting Spark..."}
           {status === "ready" &&
-            "Ready (Cmd+Enter to execute, Tab for completions)"}
+            "Ready (Cmd+Enter to run, Tab completions, Ctrl+R history)"}
           {status === "executing" && "Executing..."}
           {status === "error" && `Error: ${error}`}
           {status === "stopped" && "Stopped"}
@@ -160,7 +143,7 @@ function App() {
           stickyScroll: true,
           stickyStart: "bottom",
         }}
-        focused={allCompletions.length === 0 && status !== "ready"}
+        focused={popupMode === "none" && status !== "ready"}
       >
         {history.length === 0 ? (
           <text style={{ fg: "#666" }}>Output will appear here...</text>
@@ -186,71 +169,35 @@ function App() {
       <box style={{ border: true, minHeight: 5, maxHeight: 10 }}>
         <textarea
           ref={ref}
-          placeholder="Enter Scala code... (Tab for completions)"
-          focused={status === "ready" && allCompletions.length === 0}
+          placeholder="Enter Scala code... (Tab for completions, Ctrl+R for history)"
+          focused={status === "ready" && popupMode === "none"}
           syntaxStyle={syntaxStyle}
           onContentChange={() => {
             setCode(ref.current?.plainText ?? "");
-            setAllCompletions([]);
-            setCompletionFilter("");
+            setPopupMode("none");
           }}
         />
       </box>
 
       {/* Completions popup */}
-      {allCompletions.length > 0 &&
-        (() => {
-          const maxVisible = 5;
-          const start = Math.max(
-            0,
-            Math.min(safeIdx - 2, completions.length - maxVisible),
-          );
-          const visible = completions.slice(start, start + maxVisible);
-          return (
-            <box
-              style={{
-                position: "absolute",
-                bottom: 11,
-                left: 0,
-                right: 0,
-                border: true,
-                flexDirection: "column",
-                backgroundColor: "#1a1a1a",
-              }}
-            >
-              <input
-                placeholder="Filter..."
-                focused
-                onInput={(filter) => {
-                  setCompletionFilter(filter);
-                  setCompletionIdx(0);
-                }}
-                onSubmit={() =>
-                  completions.length > 0 &&
-                  applyCompletion(completions[safeIdx])
-                }
-              />
-              {completions.length === 0 ? (
-                <text style={{ fg: "#888" }}>No matches</text>
-              ) : (
-                visible.map((c, i) => (
-                  <text
-                    key={`${c}-${i}`}
-                    style={{ fg: start + i === safeIdx ? "#ff0" : "#fff" }}
-                  >
-                    {start + i === safeIdx ? "> " : "  "}
-                    {c}
-                  </text>
-                ))
-              )}
-              {completions.length > maxVisible && (
-                <text style={{ fg: "#888" }}>
-                  {safeIdx + 1}/{completions.length}
-                </text>
-              )}
-            </box>
-          );
-        })()}
+      {popupMode === "completions" && (
+        <FilterablePopup
+          items={completionItems}
+          placeholder="Filter completions..."
+          onSelect={applyCompletion}
+          onClose={() => setPopupMode("none")}
+        />
+      )}
+
+      {/* History popup */}
+      {popupMode === "history" && (
+        <FilterablePopup
+          items={historyCommands}
+          placeholder="Search history..."
+          onSelect={applyHistory}
+          onClose={() => setPopupMode("none")}
+        />
+      )}
     </box>
   );
 }
