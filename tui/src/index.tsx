@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSpark } from "./useSpark";
 import { getStyleId, highlighter, syntaxStyle } from "./highlight";
 import { FilterablePopup } from "./FilterablePopup";
+import { highlightOutputLine, errorLine } from "./highlightOutput";
 
 type PopupMode = "none" | "completions" | "history";
 
@@ -155,10 +156,8 @@ function App() {
             ...h.output.split("\n").map((line, j) => (
               <text
                 key={`o${i}-${j}`}
-                style={{ fg: h.isError ? "#f44" : "#fff" }}
-              >
-                {line}
-              </text>
+                content={h.isError ? errorLine(line) : highlightOutputLine(line)}
+              />
             )),
             <text key={`s${i}`}> </text>,
           ])
