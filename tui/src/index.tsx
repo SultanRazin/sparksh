@@ -146,10 +146,6 @@ function App() {
           placeholder="Enter Scala code... (Ctrl+Enter to run)"
           focused={status === "ready"}
           syntaxStyle={syntaxStyle}
-          keyBindings={[
-            { name: "backspace", alt: true, action: "delete-word-backward" },
-            { name: "delete", alt: true, action: "delete-word-forward" },
-          ]}
           onContentChange={() => setCode(ref.current?.plainText ?? "")}
         />
       </box>
