@@ -3,7 +3,7 @@ import subprocess
 import json
 import readline
 
-JAR_PATH = "target/scala-2.13/spark-tui-backend-assembly-0.1.0.jar"
+JAR_PATH = "spark/target/scala-2.13/sparksh-backend-assembly-0.1.0.jar"
 
 def read_json_line(proc):
     while True:

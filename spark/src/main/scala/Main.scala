@@ -1,18 +1,77 @@
-package com.sparksh
+import org.apache.spark.repl.SparkILoop
+import ujson._
+
+import java.io._
+import scala.tools.nsc.Settings
+import scala.tools.nsc.interpreter.Results
 
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 object Main {
   def main(args: Array[String]): Unit = {
-    //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-    // to see how IntelliJ IDEA suggests fixing it.
-    (1 to 5).map(println)
+    val originalOut = System.out
+    val switchableOut = new SwitchableOutputStream(originalOut)
+    System.setOut(new PrintStream(switchableOut, true))
 
-    for (i <- 1 to 5) {
-      //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-      // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-      println(s"i = $i")
+    val replOutput = new StringWriter()
+    val printWriter = new PrintWriter(replOutput, true)
+    val inputReader = new BufferedReader(new StringReader(""))
+
+    val repl = new SparkILoop(inputReader, printWriter)
+
+    val settings = new Settings()
+    settings.usejavacp.value = true
+
+    repl.createInterpreter(settings)
+    repl.initializeSpark()
+
+    replOutput.getBuffer.setLength(0)
+
+    originalOut.println(write(Obj("status" -> "ready")))
+    originalOut.flush()
+
+    val stdin = new BufferedReader(new InputStreamReader(System.in))
+    var running = true
+
+    while (running) {
+      val line = stdin.readLine()
+      if (line == null) {
+        running = false
+      } else {
+        try {
+          val request = read(line)
+          val cmd = request("cmd").str
+
+          cmd match {
+            case "eval" => val code = request("code").str
+              replOutput.getBuffer.setLength(0)
+              switchableOut.startCapture()
+
+              val result = repl.intp.interpret(code)
+              System.out.flush()
+
+              val stdoutOutput = switchableOut.stopCapture()
+              val replOutputStr = replOutput.toString.trim
+
+              val output = Seq(stdoutOutput, replOutputStr).map(_.trim).filter(_.nonEmpty).mkString("\n")
+
+              val status = result match {
+                case Results.Success => "ok"
+                case Results.Error => "error"
+                case Results.Incomplete => "incomplete"
+              }
+              originalOut.println(write(Obj("status" -> status, "output" -> output)))
+            case "quit" => running = false
+              originalOut.println(write(Obj("status" -> "bye")))
+            case _ => originalOut.println(write(Obj("status" -> "error", "output" -> s"Unknown command: $cmd")))
+          }
+        } catch {
+          case e: Exception => switchableOut.stopCapture()
+            originalOut.println(write(Obj("status" -> "error", "output" -> e.getMessage)))
+        }
+        originalOut.flush()
+      }
     }
+
+    repl.closeInterpreter()
   }
 }
-
