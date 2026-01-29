@@ -1,8 +1,17 @@
 import { createCliRenderer, type TextareaRenderable } from "@opentui/core";
 import { createRoot, useKeyboard } from "@opentui/react";
 import { useEffect, useRef, useState } from "react";
+import { appendFileSync } from "fs";
 import { useSpark } from "./useSpark";
 import { getStyleId, highlighter, syntaxStyle } from "./highlight";
+
+const log = (...args: unknown[]) =>
+  appendFileSync(
+    "debug.log",
+    args
+      .map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a)))
+      .join(" ") + "\n",
+  );
 
 function App() {
   const { status, history, error, evaluate, complete } = useSpark();
@@ -65,9 +74,7 @@ function App() {
     }
   };
 
-  const applyCompletion = (completion: string) => {
-    const newCode = code.slice(0, completionCursor) + completion;
-    const ta = ref.current as any;
+  function resetInputWithNewCode(ta, newCode: string) {
     if (ta) {
       ta.clear();
       ta.insertText(newCode);
@@ -76,6 +83,12 @@ function App() {
     setCode(newCode);
     setAllCompletions([]);
     setCompletionFilter("");
+  }
+
+  const applyCompletion = (completion: string) => {
+    const newCode = code.slice(0, completionCursor) + completion;
+    const ta = ref.current as any;
+    resetInputWithNewCode(ta, newCode);
   };
 
   useKeyboard((key) => {
@@ -106,6 +119,13 @@ function App() {
 
     if ((key.name === "return" && key.meta) || (key.name === "j" && key.ctrl)) {
       submit();
+    }
+
+    if (code == "" && history.length > 0 && key.name === "up") {
+      const prev = history[history.length - 1];
+      if (prev) {
+        resetInputWithNewCode(ref.current, prev.code);
+      }
     }
   });
 
