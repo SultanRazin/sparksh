@@ -7,7 +7,8 @@
     "dev": "bun run --watch src/index.tsx"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "shiki": "^3.21.0"
   },
   "peerDependencies": {
     "typescript": "^5"
