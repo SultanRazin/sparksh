@@ -73,7 +73,7 @@ object Main {
                   val (completionCursor, candidates) = r.candidates(0)
                   originalOut.println(write(Obj(
                     "status" -> "ok",
-                    "completions" -> candidates.take(50),
+                    "completions" -> candidates,
                     "cursor" -> completionCursor
                   )))
               }
