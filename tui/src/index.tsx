@@ -6,7 +6,7 @@ import {
 } from "@opentui/core";
 import { createRoot, useKeyboard } from "@opentui/react";
 import { useEffect, useRef, useState } from "react";
-import { useSpark } from "./useSpark";
+import { useSpark, initJarPath } from "./useSpark";
 import { getStyleId, highlighter, syntaxStyle } from "./highlight";
 import { FilterablePopup } from "./FilterablePopup";
 import { highlightOutputLine, errorLine } from "./highlightOutput";
@@ -218,4 +218,6 @@ function App() {
   );
 }
 
+// Initialize JAR path (extracts embedded JAR if needed) then start app
+await initJarPath();
 createRoot(await createCliRenderer()).render(<App />);

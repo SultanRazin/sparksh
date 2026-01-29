@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run --watch src/index.tsx"
+    "dev": "bun run --watch src/index.tsx",
+    "build": "bun build --compile --minify src/index.tsx --outfile ../dist/sparksh"
   },
   "devDependencies": {
     "@types/bun": "latest",
