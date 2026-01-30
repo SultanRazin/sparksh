@@ -17,6 +17,8 @@ A modern terminal UI for Apache Spark with syntax highlighting, auto-completion,
 curl -fsSL https://raw.githubusercontent.com/SultanRazin/sparksh/master/install.sh | bash
 ```
 
+This automatically detects your OS and architecture, then downloads the correct binary.
+
 ## Usage
 
 ```bash
@@ -34,7 +36,6 @@ sparksh --conf spark.sql.shuffle.partitions=10
 sparksh --help
 ```
 
-
 ## Supported Spark Versions
 
 SparkSH automatically detects your Spark version and uses the appropriate backend:
@@ -42,3 +43,10 @@ SparkSH automatically detects your Spark version and uses the appropriate backen
 - Spark 3.4.x
 - Spark 3.5.x
 - Spark 4.0.x
+
+## Built With
+
+- [Bun](https://bun.sh/) - JavaScript runtime and bundler
+- [OpenTUI](https://github.com/anthropics/opentui) - Terminal UI framework
+- [Shiki](https://shiki.style/) - Syntax highlighting
+- [Scala](https://www.scala-lang.org/) - Backend language
