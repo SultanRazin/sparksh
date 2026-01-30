@@ -4,7 +4,10 @@ export type PopupMode =
   | "history"
   | "commlog"
   | "functions"
-  | "function_info";
+  | "function_info"
+  | "configs"
+  | "config_info";
+
 export type Status = "starting" | "ready" | "executing" | "error" | "stopped";
 
 export type HistoryEntry = {
@@ -32,6 +35,13 @@ export type FunctionInfo = {
   usage: string;
   extended: string;
   examples: string;
+};
+
+export type ConfigInfo = {
+  propertyName: string;
+  defaultValue: string;
+  meaning: string;
+  sinceVersion: string;
 };
 
 export type DebugInfo = {

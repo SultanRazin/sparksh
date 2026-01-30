@@ -8,7 +8,12 @@ interface FilterablePopupProps {
   onClose: () => void;
 }
 
-export function FilterablePopup({ items, placeholder = "Filter...", onSelect, onClose }: FilterablePopupProps) {
+export function FilterablePopup({
+  items,
+  placeholder = "Filter...",
+  onSelect,
+  onClose,
+}: FilterablePopupProps) {
   const [filter, setFilter] = useState("");
   const [idx, setIdx] = useState(0);
 
@@ -17,8 +22,11 @@ export function FilterablePopup({ items, placeholder = "Filter...", onSelect, on
     : items;
 
   const safeIdx = Math.min(idx, Math.max(0, filtered.length - 1));
-  const maxVisible = 5;
-  const start = Math.max(0, Math.min(safeIdx - 2, filtered.length - maxVisible));
+  const maxVisible = 10;
+  const start = Math.max(
+    0,
+    Math.min(safeIdx - 2, filtered.length - maxVisible),
+  );
   const visible = filtered.slice(start, start + maxVisible);
 
   useKeyboard((key) => {

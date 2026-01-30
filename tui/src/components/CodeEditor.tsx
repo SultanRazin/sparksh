@@ -17,6 +17,7 @@ interface CodeEditorProps {
   onOpenHistory: () => void;
   onOpenCommLog: () => void;
   onOpenFunctions: () => void;
+  onOpenConfigs: () => void;
   onResizeUp: () => void;
   onResizeDown: () => void;
   onLoadPreviousCommand: (code: string) => void;
@@ -35,6 +36,7 @@ export function CodeEditor({
   onOpenHistory,
   onOpenCommLog,
   onOpenFunctions,
+  onOpenConfigs,
   onResizeUp,
   onResizeDown,
   onLoadPreviousCommand,
@@ -68,6 +70,11 @@ export function CodeEditor({
 
     if (key.name === "f" && key.ctrl) {
       onOpenFunctions();
+      return;
+    }
+
+    if (key.name === "p" && key.ctrl) {
+      onOpenConfigs();
       return;
     }
 

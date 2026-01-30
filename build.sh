@@ -37,6 +37,12 @@ cd tui
 bun run scripts/embed-jar.ts
 cd ..
 
+# Embed configs data
+echo "→ Embedding configs..."
+cd tui
+bun run scripts/embed-configs.ts
+cd ..
+
 # Build standalone binary
 echo "→ Compiling binary..."
 cd tui

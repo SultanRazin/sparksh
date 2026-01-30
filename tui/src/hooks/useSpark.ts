@@ -1,16 +1,17 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resolve } from "path";
 import log from "../utils/logger";
-import { getJarPath, detectSparkVersion } from "../lib/embeddedJar";
+import { detectSparkVersion, getJarPath } from "../lib/embeddedJar";
 import { sparkArgs } from "../lib/sparkArgs";
 import { addCommLog } from "../lib/commLog";
+import { CONFIGS } from "../lib/configsData";
 import type {
-  Status,
+  DebugInfo,
+  FunctionInfo,
   HistoryEntry,
   Progress,
   SparkInfo,
-  DebugInfo,
-  FunctionInfo,
+  Status,
 } from "../types";
 
 let JAR_PATH = "";
@@ -43,12 +44,12 @@ export function useSpark() {
   const pendingRef = useRef<((res: any) => void) | null>(null);
 
   const homeDir = process.env.HOME || "";
-  const filePath = resolve(homeDir, ".scala_history");
+  const scalaHistoryFilePath = resolve(homeDir, ".scala_history");
 
   useEffect(() => {
     (async () => {
       try {
-        const file = Bun.file(filePath);
+        const file = Bun.file(scalaHistoryFilePath);
         const data = await file.text();
         const lines = data.split("\n").filter((line) => line.trim());
         log("Read history file with", lines.length, "lines");
@@ -179,8 +180,8 @@ export function useSpark() {
 
     try {
       await Bun.write(
-        filePath,
-        (await Bun.file(filePath).text()) + code + "\n",
+        scalaHistoryFilePath,
+        (await Bun.file(scalaHistoryFilePath).text()) + code + "\n",
       );
     } catch {}
 
@@ -207,6 +208,7 @@ export function useSpark() {
     sparkInfo,
     debugInfo,
     functions,
+    configs: CONFIGS,
     evaluate,
     complete,
   };

@@ -9,6 +9,7 @@ import { CommLogPanel } from "./CommLogPanel";
 import { ShortcutsBar } from "./ShortcutsBar";
 import type { PopupMode, Status } from "../types";
 import { FunctionInfoPanel } from "./FunctionInfoPanel.tsx";
+import { ConfigsInfoPanel } from "./ConfigsInfoPanel.tsx";
 
 export function App() {
   const {
@@ -20,6 +21,7 @@ export function App() {
     sparkInfo,
     debugInfo,
     functions,
+    configs,
     evaluate,
     complete,
   } = useSpark();
@@ -29,6 +31,7 @@ export function App() {
   const [completionCursor, setCompletionCursor] = useState(0);
   const [inputHeight, setInputHeight] = useState(5);
   const [selectedFunction, setSelectedFunction] = useState("");
+  const [selectedConfig, setSelectedConfig] = useState("");
   const ref = useRef<TextareaRenderable | null>(null);
 
   const resetInputWithNewCode = (newCode: string) => {
@@ -45,6 +48,11 @@ export function App() {
   const applyFunction = (functionName: string) => {
     setSelectedFunction(functionName);
     setPopupMode("function_info");
+  };
+
+  const applyConfig = (configName: string) => {
+    setSelectedConfig(configName);
+    setPopupMode("config_info");
   };
 
   const submit = async () => {
@@ -76,7 +84,7 @@ export function App() {
 
   const currentSessionCodes = new Set(history.map((h) => h.code));
   const storedHistoryCommands = storedHistory
-    .map((h) => h.code)
+    .map((h) => h.code.trim())
     .filter((code) => !currentSessionCodes.has(code));
   const combinedHistory = [
     ...storedHistoryCommands,
@@ -117,6 +125,7 @@ export function App() {
         }
         onOpenCommLog={() => setPopupMode("commlog")}
         onOpenFunctions={() => setPopupMode("functions")}
+        onOpenConfigs={() => setPopupMode("configs")}
         onResizeUp={() => setInputHeight(Math.min(10, inputHeight + 1))}
         onResizeDown={() => setInputHeight(Math.max(1, inputHeight - 1))}
         onLoadPreviousCommand={resetInputWithNewCode}
@@ -155,11 +164,28 @@ export function App() {
         />
       )}
 
+      {popupMode === "configs" && (
+        <FilterablePopup
+          items={configs.map((c) => c.propertyName) as string[]}
+          placeholder="Search configs..."
+          onSelect={applyConfig}
+          onClose={() => setPopupMode("none")}
+        />
+      )}
+
       {popupMode === "function_info" && (
         <FunctionInfoPanel
           functionName={selectedFunction}
           functions={functions}
           onClose={() => setPopupMode("functions")}
+        />
+      )}
+
+      {popupMode === "config_info" && (
+        <ConfigsInfoPanel
+          configName={selectedConfig}
+          configs={configs}
+          onClose={() => setPopupMode("configs")}
         />
       )}
 
