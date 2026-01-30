@@ -4,7 +4,13 @@ import log from "../utils/logger";
 import { getJarPath, detectSparkVersion } from "../lib/embeddedJar";
 import { sparkArgs } from "../lib/sparkArgs";
 import { addCommLog } from "../lib/commLog";
-import type { Status, HistoryEntry, Progress, SparkInfo, DebugInfo } from "../types";
+import type {
+  Status,
+  HistoryEntry,
+  Progress,
+  SparkInfo,
+  DebugInfo,
+} from "../types";
 
 let JAR_PATH = "";
 let DETECTED_SPARK_VERSION = "";
@@ -55,7 +61,7 @@ export function useSpark() {
 
   useEffect(() => {
     const cmd = ["spark-submit", ...sparkArgs, "--class", "Main", JAR_PATH];
-    log("Spawning:", cmd.join(" "));
+    addCommLog("send", cmd.join(" "));
 
     setDebugInfo({
       detectedSparkVersion: DETECTED_SPARK_VERSION,
@@ -187,5 +193,15 @@ export function useSpark() {
     return { completions: unique, cursor: res.cursor };
   };
 
-  return { status, history, storedHistory, error, progress, sparkInfo, debugInfo, evaluate, complete };
+  return {
+    status,
+    history,
+    storedHistory,
+    error,
+    progress,
+    sparkInfo,
+    debugInfo,
+    evaluate,
+    complete,
+  };
 }

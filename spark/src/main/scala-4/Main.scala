@@ -1,4 +1,6 @@
 import org.apache.spark.repl.SparkILoop
+import org.apache.spark.SparkConf
+import org.apache.spark.sql.SparkSession
 import ujson._
 
 import java.io._
@@ -16,22 +18,44 @@ object Main {
     val printWriter = new PrintWriter(replOutput, true)
     val inputReader = new BufferedReader(new StringReader(""))
 
-    val repl = new SparkILoop(inputReader, printWriter)
+    val conf = new SparkConf()
+    val spark = SparkSession.builder()
+      .config(conf)
+      .getOrCreate()
 
     val settings = new Settings()
     settings.usejavacp.value = true
 
-    repl.createInterpreter(settings)
-    repl.initializeSpark()
-
-    val sparkObj = repl.intp.valueOfTerm("spark")
-    val (sparkVersion, scalaVersion, master) = sparkObj match {
-      case Some(spark: org.apache.spark.sql.SparkSession) =>
-        spark.sparkContext.addSparkListener(new ProgressListener(originalOut))
-        (spark.version, util.Properties.versionNumberString, spark.sparkContext.master)
-      case _ =>
-        ("unknown", util.Properties.versionNumberString, "unknown")
+    val jarsConfig = spark.conf.getOption("spark.jars").getOrElse("")
+    if (jarsConfig.nonEmpty) {
+      val jarPaths = jarsConfig.split(",")
+        .map(_.trim)
+        .filter(_.nonEmpty)
+        .map { jar =>
+          if (jar.startsWith("file:")) jar.stripPrefix("file:") else jar
+        }
+        .filter(path => new java.io.File(path).exists())
+      if (jarPaths.nonEmpty) {
+        val existingCp = settings.classpath.value
+        val newCp = if (existingCp.isEmpty) jarPaths.mkString(java.io.File.pathSeparator)
+                    else existingCp + java.io.File.pathSeparator + jarPaths.mkString(java.io.File.pathSeparator)
+        settings.classpath.value = newCp
+      }
     }
+
+    val repl = new SparkILoop(inputReader, printWriter)
+    repl.createInterpreter(settings)
+
+    repl.intp.bind("spark", spark)
+    repl.intp.bind("sc", spark.sparkContext)
+    repl.intp.interpret("import spark.implicits._")
+    repl.intp.interpret("import spark.sql")
+    repl.intp.interpret("import org.apache.spark.sql.functions._")
+
+    spark.sparkContext.addSparkListener(new ProgressListener(originalOut))
+    val sparkVersion = spark.version
+    val scalaVersion = util.Properties.versionNumberString
+    val master = spark.sparkContext.master
 
     replOutput.getBuffer.setLength(0)
 
