@@ -11,12 +11,14 @@ import {
   initJarPath,
   type Progress,
   type SparkInfo,
+  type DebugInfo,
 } from "./useSpark";
+import { CommLogPanel } from "./CommLogPanel";
 import { getStyleId, highlighter, syntaxStyle } from "./highlight";
 import { FilterablePopup } from "./FilterablePopup";
 import { highlightOutputLine, errorLine } from "./highlightOutput";
 
-type PopupMode = "none" | "completions" | "history";
+type PopupMode = "none" | "completions" | "history" | "commlog";
 type Status = "starting" | "ready" | "executing" | "error" | "stopped";
 
 const BRACKET_COLORS = [
@@ -67,6 +69,7 @@ function App() {
     error,
     progress,
     sparkInfo,
+    debugInfo,
     evaluate,
     complete,
   } = useSpark();
@@ -196,6 +199,12 @@ function App() {
       return;
     }
 
+    // Ctrl+L for communication log
+    if (key.name === "l" && key.ctrl) {
+      setPopupMode("commlog");
+      return;
+    }
+
     if (key.name === "up" && key.ctrl) {
       setInputHeight(Math.min(10, inputHeight + 1));
       return;
@@ -256,9 +265,41 @@ function App() {
               flexGrow: 1,
               justifyContent: "center",
               alignItems: "center",
+              flexDirection: "column",
             }}
           >
             <ascii-font text="SparkSH" font="block" />
+            {status === "error" && (
+              <box
+                style={{
+                  marginTop: 2,
+                  padding: 1,
+                  border: ["single"],
+                  borderColor: "#f44",
+                  flexDirection: "column",
+                  width: 80,
+                }}
+              >
+                <text content={t`${fg("#f44")("Debug Info")}`} />
+                <text content={t`${fg("#888")("─────────────────────────────────────")}`} />
+                <text content={t`${fg("#6cf")("Detected Spark:")} ${fg("#fff")(debugInfo.detectedSparkVersion || "unknown")}`} />
+                <text content={t`${fg("#6cf")("SPARK_HOME:")} ${fg("#fff")(debugInfo.sparkHome)}`} />
+                <text content={t`${fg("#6cf")("JAVA_HOME:")} ${fg("#fff")(debugInfo.javaHome)}`} />
+                <text content={t`${fg("#6cf")("JAR Path:")} ${fg("#fff")(debugInfo.jarPath)}`} />
+                <text content={t`${fg("#888")("─────────────────────────────────────")}`} />
+                <text content={t`${fg("#fa0")("Command:")}`} />
+                <text content={t`${fg("#888")(debugInfo.command)}`} />
+                {debugInfo.stderr && (
+                  <>
+                    <text content={t`${fg("#888")("─────────────────────────────────────")}`} />
+                    <text content={t`${fg("#f44")("stderr:")}`} />
+                    {debugInfo.stderr.slice(-2000).split("\n").map((line, i) => (
+                      <text key={i} content={t`${fg("#888")(line)}`} />
+                    ))}
+                  </>
+                )}
+              </box>
+            )}
           </box>
         ) : (
           history.flatMap((h, i) => [
@@ -330,10 +371,15 @@ function App() {
         />
       )}
 
+      {/* Communication log popup */}
+      {popupMode === "commlog" && (
+        <CommLogPanel onClose={() => setPopupMode("none")} />
+      )}
+
       {/* Shortcuts */}
       <box style={{ height: 1 }}>
         <text
-          content={t`${fg("#888")("^↵ Run · ⇥ Complete · ^R History · ^↑/↓ Resize")}`}
+          content={t`${fg("#888")("^↵ Run · ⇥ Complete · ^R History · ^L Logs · ^↑/↓ Resize")}`}
         />
       </box>
     </box>

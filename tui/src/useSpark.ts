@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { resolve } from "path";
 import log from "./logger.ts";
-import { getJarPath } from "./embeddedJar.ts";
+import { getJarPath, detectSparkVersion } from "./embeddedJar.ts";
 
 let JAR_PATH = "";
+let DETECTED_SPARK_VERSION = "";
 
 export async function initJarPath() {
+  DETECTED_SPARK_VERSION = detectSparkVersion();
   JAR_PATH = await getJarPath();
+  log("Detected Spark version:", DETECTED_SPARK_VERSION);
   log("Using JAR:", JAR_PATH);
 }
 
@@ -87,6 +90,34 @@ export type SparkInfo = {
   scalaVersion: string;
   master: string;
 } | null;
+export type DebugInfo = {
+  detectedSparkVersion: string;
+  jarPath: string;
+  sparkHome: string;
+  javaHome: string;
+  command: string;
+  stderr: string;
+};
+
+export type CommLog = {
+  direction: "send" | "recv";
+  timestamp: number;
+  data: string;
+};
+
+const commLogs: CommLog[] = [];
+const MAX_LOGS = 100;
+
+export function getCommLogs(): CommLog[] {
+  return commLogs;
+}
+
+function addCommLog(direction: "send" | "recv", data: string) {
+  commLogs.push({ direction, timestamp: Date.now(), data });
+  if (commLogs.length > MAX_LOGS) {
+    commLogs.shift();
+  }
+}
 
 export function useSpark() {
   const [status, setStatus] = useState<Status>("starting");
@@ -95,6 +126,14 @@ export function useSpark() {
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<Progress>(null);
   const [sparkInfo, setSparkInfo] = useState<SparkInfo>(null);
+  const [debugInfo, setDebugInfo] = useState<DebugInfo>({
+    detectedSparkVersion: "",
+    jarPath: "",
+    sparkHome: "",
+    javaHome: "",
+    command: "",
+    stderr: "",
+  });
   const stdinRef = useRef<import("bun").FileSink | null>(null);
   const pendingRef = useRef<((res: any) => void) | null>(null);
 
@@ -121,13 +160,40 @@ export function useSpark() {
     const cmd = ["spark-submit", ...sparkArgs, "--class", "Main", JAR_PATH];
     log("Spawning:", cmd.join(" "));
 
+    // Capture debug info
+    setDebugInfo({
+      detectedSparkVersion: DETECTED_SPARK_VERSION,
+      jarPath: JAR_PATH,
+      sparkHome: process.env.SPARK_HOME || "(not set)",
+      javaHome: process.env.JAVA_HOME || "(not set)",
+      command: cmd.join(" "),
+      stderr: "",
+    });
+
     const proc = Bun.spawn(cmd, {
       stdin: "pipe",
       stdout: "pipe",
-      stderr: "ignore",
+      stderr: "pipe",
     });
 
     stdinRef.current = proc.stdin;
+
+    // Capture stderr
+    let stderrBuffer = "";
+    const stderrReader = proc.stderr.getReader();
+    (async () => {
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await stderrReader.read();
+        if (done) break;
+        stderrBuffer += decoder.decode(value, { stream: true });
+        // Keep last 5000 chars
+        if (stderrBuffer.length > 5000) {
+          stderrBuffer = stderrBuffer.slice(-5000);
+        }
+        setDebugInfo((prev) => ({ ...prev, stderr: stderrBuffer }));
+      }
+    })();
 
     const reader = proc.stdout.getReader();
     const decoder = new TextDecoder();
@@ -143,6 +209,7 @@ export function useSpark() {
 
         for (const line of lines) {
           if (!line.trim()) continue;
+          addCommLog("recv", line);
           try {
             const res = JSON.parse(line);
             if (res.type === "progress") {
@@ -184,7 +251,9 @@ export function useSpark() {
   const request = <T>(cmd: object): Promise<T> => {
     return new Promise((resolve) => {
       pendingRef.current = resolve;
-      stdinRef.current?.write(JSON.stringify(cmd) + "\n");
+      const json = JSON.stringify(cmd);
+      addCommLog("send", json);
+      stdinRef.current?.write(json + "\n");
       stdinRef.current?.flush();
     });
   };
@@ -224,5 +293,5 @@ export function useSpark() {
     return { completions: unique, cursor: res.cursor };
   };
 
-  return { status, history, storedHistory, error, progress, sparkInfo, evaluate, complete };
+  return { status, history, storedHistory, error, progress, sparkInfo, debugInfo, evaluate, complete };
 }

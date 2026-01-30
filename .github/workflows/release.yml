@@ -42,17 +42,28 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Build Scala backend
+      - name: Build Scala backends for all Spark versions
         run: |
           cd spark
-          sbt assembly
+          mkdir -p ../dist/jars
+
+          sbt "set sparkVersion := \"3.4.4\"" clean assembly
+          cp target/scala-2.13/sparksh-backend-spark34.jar ../dist/jars/
+
+          sbt "set sparkVersion := \"3.5.4\"" clean assembly
+          cp target/scala-2.13/sparksh-backend-spark35.jar ../dist/jars/
+
+          sbt "set sparkVersion := \"4.0.0\"" clean assembly
+          cp target/scala-2.13/sparksh-backend-spark40.jar ../dist/jars/
+
+          cp ../dist/jars/*.jar target/scala-2.13/
 
       - name: Install dependencies
         run: |
           cd tui
           bun install
 
-      - name: Embed JAR
+      - name: Embed JARs
         run: |
           cd tui
           bun run scripts/embed-jar.ts

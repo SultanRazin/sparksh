@@ -1,30 +1,41 @@
 import { resolve } from "path";
 
-const jarPath = resolve(
-  import.meta.dir,
-  "../../spark/target/scala-2.13/sparksh-backend.jar",
-);
+// Spark version -> Scala version mapping
+const SPARK_CONFIGS = [
+  { spark: "34", scala: "2.12" },
+  { spark: "35", scala: "2.12" },
+  { spark: "40", scala: "2.13" },
+];
+
+const SPARK_DIR = resolve(import.meta.dir, "../../spark/target");
 const outputPath = resolve(import.meta.dir, "../src/jarData.ts");
 
-const jarFile = Bun.file(jarPath);
+const jars: Record<string, string> = {};
+let totalSize = 0;
 
-if (!(await jarFile.exists())) {
-  console.error("JAR not found at:", jarPath);
-  console.error("Run 'sbt assembly' in the spark directory first.");
-  process.exit(1);
+for (const { spark, scala } of SPARK_CONFIGS) {
+  const jarPath = resolve(SPARK_DIR, `scala-${scala}`, `sparksh-backend-spark${spark}.jar`);
+  const jarFile = Bun.file(jarPath);
+
+  if (!(await jarFile.exists())) {
+    console.error(`JAR not found: ${jarPath}`);
+    console.error(`Run build.sh to build all versions`);
+    process.exit(1);
+  }
+
+  const jarBytes = await jarFile.arrayBuffer();
+  jars[spark] = Buffer.from(jarBytes).toString("base64");
+  totalSize += jarBytes.byteLength;
+  console.log(`  Spark ${spark} (Scala ${scala}): ${(jarBytes.byteLength / 1024 / 1024).toFixed(2)} MB`);
 }
 
-const jarBytes = await jarFile.arrayBuffer();
-const base64 = Buffer.from(jarBytes).toString("base64");
-
 const output = `// Auto-generated - do not edit
-// Contains embedded sparksh-backend.jar as base64
-export const JAR_BASE64 = "${base64}";
-export const JAR_SIZE = ${jarBytes.byteLength};
+// Contains embedded sparksh-backend JARs for multiple Spark versions
+export const JARS: Record<string, string> = {
+${Object.entries(jars).map(([v, b64]) => `  "${v}": "${b64}",`).join("\n")}
+};
 `;
 
 await Bun.write(outputPath, output);
 
-console.log(
-  `Embedded JAR (${(jarBytes.byteLength / 1024 / 1024).toFixed(2)} MB) into jarData.ts`,
-);
+console.log(`\nEmbedded ${SPARK_CONFIGS.length} JARs (${(totalSize / 1024 / 1024).toFixed(2)} MB total) into jarData.ts`);
