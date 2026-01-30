@@ -8,7 +8,7 @@ const SPARK_CONFIGS = [
 ];
 
 const SPARK_DIR = resolve(import.meta.dir, "../../spark/target");
-const outputPath = resolve(import.meta.dir, "../src/jarData.ts");
+const outputPath = resolve(import.meta.dir, "../src/lib/jarData.ts");
 
 const jars: Record<string, string> = {};
 let totalSize = 0;
