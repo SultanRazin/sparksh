@@ -82,6 +82,11 @@ export type Progress = {
   completedTasks: number;
   activeTasks: number;
 } | null;
+export type SparkInfo = {
+  sparkVersion: string;
+  scalaVersion: string;
+  master: string;
+} | null;
 
 export function useSpark() {
   const [status, setStatus] = useState<Status>("starting");
@@ -89,6 +94,7 @@ export function useSpark() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<Progress>(null);
+  const [sparkInfo, setSparkInfo] = useState<SparkInfo>(null);
   const stdinRef = useRef<import("bun").FileSink | null>(null);
   const pendingRef = useRef<((res: any) => void) | null>(null);
 
@@ -147,8 +153,14 @@ export function useSpark() {
                 completedTasks: res.completedTasks,
                 activeTasks: res.activeTasks,
               });
-            } else if (res.status === "ready") setStatus("ready");
-            else if (res.status === "bye") setStatus("stopped");
+            } else if (res.status === "ready") {
+              setSparkInfo({
+                sparkVersion: res.sparkVersion ?? "unknown",
+                scalaVersion: res.scalaVersion ?? "unknown",
+                master: res.master ?? "unknown",
+              });
+              setStatus("ready");
+            } else if (res.status === "bye") setStatus("stopped");
             else if (pendingRef.current) {
               pendingRef.current(res);
               pendingRef.current = null;
@@ -212,5 +224,5 @@ export function useSpark() {
     return { completions: unique, cursor: res.cursor };
   };
 
-  return { status, history, storedHistory, error, progress, evaluate, complete };
+  return { status, history, storedHistory, error, progress, sparkInfo, evaluate, complete };
 }

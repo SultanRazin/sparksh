@@ -25,15 +25,22 @@ object Main {
     repl.initializeSpark()
 
     val sparkObj = repl.intp.valueOfTerm("spark")
-    sparkObj match {
+    val (sparkVersion, scalaVersion, master) = sparkObj match {
       case Some(spark: org.apache.spark.sql.SparkSession) =>
         spark.sparkContext.addSparkListener(new ProgressListener(originalOut))
+        (spark.version, util.Properties.versionNumberString, spark.sparkContext.master)
       case _ =>
+        ("unknown", util.Properties.versionNumberString, "unknown")
     }
 
     replOutput.getBuffer.setLength(0)
 
-    originalOut.println(write(Obj("status" -> "ready")))
+    originalOut.println(write(Obj(
+      "status" -> "ready",
+      "sparkVersion" -> sparkVersion,
+      "scalaVersion" -> scalaVersion,
+      "master" -> master
+    )))
     originalOut.flush()
 
     val stdin = new BufferedReader(new InputStreamReader(System.in))

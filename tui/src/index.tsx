@@ -6,7 +6,12 @@ import {
 } from "@opentui/core";
 import { createRoot, useKeyboard } from "@opentui/react";
 import { useEffect, useRef, useState } from "react";
-import { useSpark, initJarPath, type Progress } from "./useSpark";
+import {
+  useSpark,
+  initJarPath,
+  type Progress,
+  type SparkInfo,
+} from "./useSpark";
 import { getStyleId, highlighter, syntaxStyle } from "./highlight";
 import { FilterablePopup } from "./FilterablePopup";
 import { highlightOutputLine, errorLine } from "./highlightOutput";
@@ -61,6 +66,7 @@ function App() {
     storedHistory,
     error,
     progress,
+    sparkInfo,
     evaluate,
     complete,
   } = useSpark();
@@ -220,8 +226,19 @@ function App() {
   return (
     <box style={{ flexDirection: "column", flexGrow: 1, position: "relative" }}>
       {/* Status bar */}
-      <box style={{ height: 1 }}>
+      <box
+        style={{
+          height: 1,
+          flexDirection: "row",
+          justifyContent: "space-between",
+        }}
+      >
         <text content={getStatusBar(status as Status, error, progress)} />
+        {sparkInfo && (
+          <text
+            content={t`${fg("#888")(`Spark ${sparkInfo.sparkVersion} · Scala ${sparkInfo.scalaVersion} · ${sparkInfo.master}`)}`}
+          />
+        )}
       </box>
 
       {/* Output history */}
