@@ -1,0 +1,3 @@
+# Mark generated files so GitHub Linguist ignores them in language stats
+tui/src/lib/jarData.ts linguist-generated
+tui/src/lib/configsData.ts linguist-generated
