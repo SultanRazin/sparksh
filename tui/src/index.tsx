@@ -19,7 +19,7 @@ function getStatusBar(status: Status, error: string) {
     case "starting":
       return t`${fg("#888")("⏳ Starting...")}`;
     case "ready":
-      return t`${fg("#4a4")("⚡ Ready")}  ${fg("#aaa")("⌘↵")} ${fg("#888")("Run")} ${fg("#666")("·")} ${fg("#aaa")("⇥")} ${fg("#888")("Complete")} ${fg("#666")("·")} ${fg("#aaa")("^R")} ${fg("#888")("History")}`;
+      return t`${fg("#4a4")("⚡ Ready")}`;
     case "executing":
       return t`${fg("#fa0")("⚙ Running...")}`;
     case "error":
@@ -36,6 +36,7 @@ function App() {
   const [popupMode, setPopupMode] = useState<PopupMode>("none");
   const [completionItems, setCompletionItems] = useState<string[]>([]);
   const [completionCursor, setCompletionCursor] = useState(0);
+  const [inputHeight, setInputHeight] = useState(5);
   const ref = useRef<TextareaRenderable>(null);
 
   // Syntax highlighting
@@ -109,7 +110,7 @@ function App() {
       return;
     }
 
-    if ((key.name === "return" && key.meta) || (key.name === "j" && key.ctrl)) {
+    if ((key.name === "return" && key.ctrl) || (key.name === "j" && key.ctrl)) {
       submit();
       return;
     }
@@ -120,6 +121,16 @@ function App() {
       return;
     }
 
+    if (key.name === "up" && key.ctrl) {
+      setInputHeight(Math.min(10, inputHeight + 1));
+      return;
+    }
+
+    if (key.name === "down" && key.ctrl) {
+      setInputHeight(Math.max(1, inputHeight - 1));
+      return;
+    }
+
     // Up arrow when empty to get last command
     if (code === "" && history.length > 0 && key.name === "up") {
       const prev = history[history.length - 1];
@@ -127,7 +138,10 @@ function App() {
     }
   });
 
-  const storedHistoryCommands = storedHistory.map((h) => h.code);
+  const currentSessionCodes = new Set(history.map((h) => h.code));
+  const storedHistoryCommands = storedHistory
+    .map((h) => h.code)
+    .filter((code) => !currentSessionCodes.has(code));
   const combinedHistory = [
     ...storedHistoryCommands,
     ...history.map((h) => h.code),
@@ -145,7 +159,6 @@ function App() {
       <scrollbox
         style={{
           flexGrow: 1,
-          border: true,
           stickyScroll: true,
           stickyStart: "bottom",
         }}
@@ -166,34 +179,50 @@ function App() {
             <text key={`c${i}`} style={{ fg: "#6cf" }}>
               {">>> " + h.code}
             </text>,
-            ...h.output
-              .split("\n")
-              .map((line, j) => (
+            ...h.output.split("\n").map((line, j) => (
+              <box
+                style={{ backgroundColor: "#1a1a1a" }}
+                key={`o-box${i}-${j}`}
+              >
                 <text
                   key={`o${i}-${j}`}
                   content={
                     h.isError ? errorLine(line) : highlightOutputLine(line)
                   }
                 />
-              )),
+              </box>
+            )),
             <text key={`s${i}`}> </text>,
           ])
         )}
       </scrollbox>
 
       {/* Code editor */}
-      <box style={{ border: true, minHeight: 5, maxHeight: 10 }}>
+      <scrollbox
+        style={{
+          border: ["left"],
+          borderColor: "#444",
+          height: inputHeight,
+          backgroundColor: "#1a1a1a",
+          stickyScroll: true,
+          stickyStart: "bottom",
+        }}
+      >
         <textarea
           ref={ref}
-          placeholder="Enter Scala code... (Tab for completions, Ctrl+R for history)"
+          placeholder="Type your Scala code here..."
           focused={status === "ready" && popupMode === "none"}
           syntaxStyle={syntaxStyle}
+          style={{
+            marginTop: 1,
+            marginLeft: 1,
+          }}
           onContentChange={() => {
             setCode(ref.current?.plainText ?? "");
             setPopupMode("none");
           }}
         />
-      </box>
+      </scrollbox>
 
       {/* Completions popup */}
       {popupMode === "completions" && (
@@ -214,6 +243,13 @@ function App() {
           onClose={() => setPopupMode("none")}
         />
       )}
+
+      {/* Shortcuts */}
+      <box style={{ height: 1 }}>
+        <text
+          content={t`${fg("#888")("^↵ Run · ⇥ Complete · ^R History · ^↑/↓ Resize")}`}
+        />
+      </box>
     </box>
   );
 }

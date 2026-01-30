@@ -87,19 +87,21 @@ export function useSpark() {
   const homeDir = process.env.HOME || "";
   const filePath = resolve(homeDir, ".scala_history");
 
-  try {
-    const file = Bun.file(filePath);
-    const content = file.text();
-    content.then((data) => {
-      const lines = data.split("\n").filter((line) => line.trim());
-      log("Read history file with", lines.length, "lines");
-      setStoredHistory(
-        lines.map((line) => ({ code: line, output: "", isError: false })),
-      );
-    });
-  } catch (error) {
-    log("Error reading the file:", error);
-  }
+  useEffect(() => {
+    (async () => {
+      try {
+        const file = Bun.file(filePath);
+        const data = await file.text();
+        const lines = data.split("\n").filter((line) => line.trim());
+        log("Read history file with", lines.length, "lines");
+        setStoredHistory(
+          lines.map((line) => ({ code: line, output: "", isError: false })),
+        );
+      } catch (error) {
+        log("Error reading the file:", error);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     const cmd = ["spark-submit", ...sparkArgs, "--class", "Main", JAR_PATH];
