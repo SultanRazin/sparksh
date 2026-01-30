@@ -24,6 +24,13 @@ object Main {
     repl.createInterpreter(settings)
     repl.initializeSpark()
 
+    val sparkObj = repl.intp.valueOfTerm("spark")
+    sparkObj match {
+      case Some(spark: org.apache.spark.sql.SparkSession) =>
+        spark.sparkContext.addSparkListener(new ProgressListener(originalOut))
+      case _ =>
+    }
+
     replOutput.getBuffer.setLength(0)
 
     originalOut.println(write(Obj("status" -> "ready")))

@@ -6,7 +6,7 @@ import {
 } from "@opentui/core";
 import { createRoot, useKeyboard } from "@opentui/react";
 import { useEffect, useRef, useState } from "react";
-import { useSpark, initJarPath } from "./useSpark";
+import { useSpark, initJarPath, type Progress } from "./useSpark";
 import { getStyleId, highlighter, syntaxStyle } from "./highlight";
 import { FilterablePopup } from "./FilterablePopup";
 import { highlightOutputLine, errorLine } from "./highlightOutput";
@@ -14,13 +14,25 @@ import { highlightOutputLine, errorLine } from "./highlightOutput";
 type PopupMode = "none" | "completions" | "history";
 type Status = "starting" | "ready" | "executing" | "error" | "stopped";
 
-function getStatusBar(status: Status, error: string) {
+function getProgressBar(progress: Progress, width: number = 20): string {
+  if (!progress) return "";
+  const { completedTasks, activeTasks, totalTasks } = progress;
+  const filled = Math.round((completedTasks / totalTasks) * width);
+  const bar = "█".repeat(filled) + "░".repeat(width - filled);
+  return `[${bar}] (${completedTasks} + ${activeTasks}) / ${totalTasks}`;
+}
+
+function getStatusBar(status: Status, error: string, progress: Progress) {
   switch (status) {
     case "starting":
       return t`${fg("#888")("⏳ Starting...")}`;
     case "ready":
       return t`${fg("#4a4")("⚡ Ready")}`;
     case "executing":
+      if (progress) {
+        const progressBar = getProgressBar(progress);
+        return t`${fg("#fa0")(`⚙ Stage ${progress.stageId}: ${progressBar}`)}`;
+      }
       return t`${fg("#fa0")("⚙ Running...")}`;
     case "error":
       return t`${fg("#f44")(`✗ Error: ${error}`)}`;
@@ -30,7 +42,7 @@ function getStatusBar(status: Status, error: string) {
 }
 
 function App() {
-  const { status, history, storedHistory, error, evaluate, complete } =
+  const { status, history, storedHistory, error, progress, evaluate, complete } =
     useSpark();
   const [code, setCode] = useState("");
   const [popupMode, setPopupMode] = useState<PopupMode>("none");
@@ -152,7 +164,7 @@ function App() {
     <box style={{ flexDirection: "column", flexGrow: 1, position: "relative" }}>
       {/* Status bar */}
       <box style={{ height: 1 }}>
-        <text content={getStatusBar(status as Status, error)} />
+        <text content={getStatusBar(status as Status, error, progress)} />
       </box>
 
       {/* Output history */}

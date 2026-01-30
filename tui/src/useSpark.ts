@@ -75,12 +75,20 @@ export const sparkArgs = parseSparkArgs();
 
 export type Status = "starting" | "ready" | "executing" | "error" | "stopped";
 export type HistoryEntry = { code: string; output: string; isError: boolean };
+export type Progress = {
+  stageId: number;
+  stageName: string;
+  totalTasks: number;
+  completedTasks: number;
+  activeTasks: number;
+} | null;
 
 export function useSpark() {
   const [status, setStatus] = useState<Status>("starting");
   const [storedHistory, setStoredHistory] = useState<HistoryEntry[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState<Progress>(null);
   const stdinRef = useRef<import("bun").FileSink | null>(null);
   const pendingRef = useRef<((res: any) => void) | null>(null);
 
@@ -131,7 +139,15 @@ export function useSpark() {
           if (!line.trim()) continue;
           try {
             const res = JSON.parse(line);
-            if (res.status === "ready") setStatus("ready");
+            if (res.type === "progress") {
+              setProgress({
+                stageId: res.stageId,
+                stageName: res.stageName,
+                totalTasks: res.totalTasks,
+                completedTasks: res.completedTasks,
+                activeTasks: res.activeTasks,
+              });
+            } else if (res.status === "ready") setStatus("ready");
             else if (res.status === "bye") setStatus("stopped");
             else if (pendingRef.current) {
               pendingRef.current(res);
@@ -163,6 +179,7 @@ export function useSpark() {
 
   const evaluate = async (code: string) => {
     setStatus("executing");
+    setProgress(null);
     const res = await request<{ status: string; output?: string }>({
       cmd: "eval",
       code,
@@ -171,6 +188,7 @@ export function useSpark() {
       ...h,
       { code, output: res.output ?? "", isError: res.status === "error" },
     ]);
+    setProgress(null);
     setStatus("ready");
 
     try {
@@ -194,5 +212,5 @@ export function useSpark() {
     return { completions: unique, cursor: res.cursor };
   };
 
-  return { status, history, storedHistory, error, evaluate, complete };
+  return { status, history, storedHistory, error, progress, evaluate, complete };
 }
