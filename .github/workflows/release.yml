@@ -47,16 +47,23 @@ jobs:
           cd spark
           mkdir -p ../dist/jars
 
+          # Spark 3.4 uses Scala 2.12
           sbt "set sparkVersion := \"3.4.4\"" clean assembly
-          cp target/scala-2.13/sparksh-backend-spark34.jar ../dist/jars/
+          cp target/scala-2.12/sparksh-backend-spark34.jar ../dist/jars/
 
+          # Spark 3.5 uses Scala 2.12
           sbt "set sparkVersion := \"3.5.4\"" clean assembly
-          cp target/scala-2.13/sparksh-backend-spark35.jar ../dist/jars/
+          cp target/scala-2.12/sparksh-backend-spark35.jar ../dist/jars/
 
+          # Spark 4.0 uses Scala 2.13
           sbt "set sparkVersion := \"4.0.0\"" clean assembly
           cp target/scala-2.13/sparksh-backend-spark40.jar ../dist/jars/
 
-          cp ../dist/jars/*.jar target/scala-2.13/
+          # Copy all JARs to both directories for embed script
+          mkdir -p target/scala-2.12 target/scala-2.13
+          cp ../dist/jars/sparksh-backend-spark34.jar target/scala-2.12/
+          cp ../dist/jars/sparksh-backend-spark35.jar target/scala-2.12/
+          cp ../dist/jars/sparksh-backend-spark40.jar target/scala-2.13/
 
       - name: Install dependencies
         run: |
