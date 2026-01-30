@@ -2,7 +2,7 @@
 
 A modern terminal UI for Apache Spark with syntax highlighting, auto-completion, and a better interactive experience.
 
-![SparkSH Demo](demo.gif)
+![SparkSH Demo](demo_v2.gif)
 
 ## Prerequisites
 
