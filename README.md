@@ -47,6 +47,6 @@ SparkSH automatically detects your Spark version and uses the appropriate backen
 ## Built With
 
 - [Bun](https://bun.sh/) - JavaScript runtime and bundler
-- [OpenTUI](https://github.com/anthropics/opentui) - Terminal UI framework
+- [OpenTUI](https://github.com/anomalyco/opentui) - Terminal UI framework
 - [Shiki](https://shiki.style/) - Syntax highlighting
 - [Scala](https://www.scala-lang.org/) - Backend language
