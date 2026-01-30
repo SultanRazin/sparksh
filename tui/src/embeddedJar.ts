@@ -2,12 +2,12 @@ import { resolve } from "path";
 
 const CACHE_DIR = resolve(process.env.HOME || "", ".sparksh");
 const CACHED_JAR = resolve(CACHE_DIR, "sparksh-backend.jar");
-const VERSION = "0.1.4";
+const VERSION = "0.1.3";
 const VERSION_FILE = resolve(CACHE_DIR, ".version");
 
 const DEV_JAR = resolve(
   import.meta.dir,
-  "../../spark/target/scala-2.13/sparksh-backend-assembly-0.1.4.jar",
+  "../../spark/target/scala-2.13/sparksh-backend-assembly-0.1.3.jar",
 );
 
 export async function getJarPath(): Promise<string> {
