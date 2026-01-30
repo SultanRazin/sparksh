@@ -1,5 +1,5 @@
 name := "sparksh-backend"
-version := "0.1.0"
+version := "0.1.4"
 scalaVersion := "2.13.17"
 
 val sparkVersion = "4.0.0"
