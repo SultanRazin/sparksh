@@ -17,7 +17,9 @@ export function parseSparkArgs(): string[] {
       arg.startsWith("--driver-java-options") ||
       arg.startsWith("--files") ||
       arg.startsWith("--py-files") ||
-      arg.startsWith("--archives")
+      arg.startsWith("--archives") ||
+      arg.startsWith("--keytab") ||
+      arg.startsWith("--principal")
     ) {
       if (arg.includes("=")) {
         sparkArgs.push(arg);
