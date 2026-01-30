@@ -14,6 +14,19 @@ import { highlightOutputLine, errorLine } from "./highlightOutput";
 type PopupMode = "none" | "completions" | "history";
 type Status = "starting" | "ready" | "executing" | "error" | "stopped";
 
+const BRACKET_COLORS = [
+  "#f9e64f",
+  "#da70d6",
+  "#6be5fd",
+  "#87d96c",
+  "#ff9e64",
+  "#bb9af7",
+  "#7dcfff",
+  "#f7768e",
+  "#73daca",
+  "#ff7a93",
+];
+
 function getProgressBar(progress: Progress, width: number = 20): string {
   if (!progress) return "";
   const { completedTasks, activeTasks, totalTasks } = progress;
@@ -42,8 +55,15 @@ function getStatusBar(status: Status, error: string, progress: Progress) {
 }
 
 function App() {
-  const { status, history, storedHistory, error, progress, evaluate, complete } =
-    useSpark();
+  const {
+    status,
+    history,
+    storedHistory,
+    error,
+    progress,
+    evaluate,
+    complete,
+  } = useSpark();
   const [code, setCode] = useState("");
   const [popupMode, setPopupMode] = useState<PopupMode>("none");
   const [completionItems, setCompletionItems] = useState<string[]>([]);
@@ -51,7 +71,7 @@ function App() {
   const [inputHeight, setInputHeight] = useState(5);
   const ref = useRef<TextareaRenderable>(null);
 
-  // Syntax highlighting
+  // Syntax highlighting with rainbow brackets
   useEffect(() => {
     const ta = ref.current;
     if (!ta) return;
@@ -62,14 +82,51 @@ function App() {
       lang: "scala",
       theme: "github-dark",
     });
+
+    // Track bracket depth across all lines
+    let depth = 0;
+
     tokens.forEach((line, lineIdx) => {
       let col = 0;
       line.forEach(({ content, color }) => {
-        ta.addHighlight(lineIdx, {
-          start: col,
-          end: col + content.length,
-          styleId: getStyleId(color || "#fff"),
-        });
+        const hasBrackets = /[()[\]{}]/.test(content);
+
+        if (!hasBrackets) {
+          ta.addHighlight(lineIdx, {
+            start: col,
+            end: col + content.length,
+            styleId: getStyleId(color || "#fff"),
+          });
+        } else {
+          for (let i = 0; i < content.length; i++) {
+            const char = content[i];
+            if ("([{".includes(char)) {
+              ta.addHighlight(lineIdx, {
+                start: col + i,
+                end: col + i + 1,
+                styleId: getStyleId(
+                  BRACKET_COLORS[depth % BRACKET_COLORS.length],
+                ),
+              });
+              depth++;
+            } else if (")]}".includes(char)) {
+              depth = Math.max(0, depth - 1);
+              ta.addHighlight(lineIdx, {
+                start: col + i,
+                end: col + i + 1,
+                styleId: getStyleId(
+                  BRACKET_COLORS[depth % BRACKET_COLORS.length],
+                ),
+              });
+            } else {
+              ta.addHighlight(lineIdx, {
+                start: col + i,
+                end: col + i + 1,
+                styleId: getStyleId(color || "#fff"),
+              });
+            }
+          }
+        }
         col += content.length;
       });
     });
