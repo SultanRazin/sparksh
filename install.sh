@@ -34,9 +34,12 @@ ARTIFACT="sparksh-${OS}-${ARCH}"
 echo "Installing SparkSH for ${OS}-${ARCH}..."
 
 # Get latest release URL
-DOWNLOAD_URL=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | \
-    grep "browser_download_url.*${ARTIFACT}" | \
-    cut -d '"' -f 4)
+RELEASE_INFO=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null) || {
+    echo "Error: No releases found. Please check https://github.com/${REPO}/releases"
+    exit 1
+}
+
+DOWNLOAD_URL=$(echo "$RELEASE_INFO" | grep "browser_download_url.*${ARTIFACT}" | cut -d '"' -f 4)
 
 if [ -z "$DOWNLOAD_URL" ]; then
     echo "Error: Could not find binary for ${ARTIFACT}"

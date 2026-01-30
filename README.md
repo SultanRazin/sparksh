@@ -12,7 +12,7 @@ A better spark-shell with a modern terminal UI.
 ### One-liner install (macOS/Linux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SultanRazin/sparksh/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SultanRazin/sparksh/master/install.sh | bash
 ```
 
 ## Usage
