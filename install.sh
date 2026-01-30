@@ -66,6 +66,8 @@ else
     sudo mv "${TMP_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}"
 fi
 
+rm -rf $HOME/.sparksh
+
 echo ""
 echo "SparkSH installed successfully!"
 echo ""
@@ -74,3 +76,5 @@ echo "  - Java 11 or higher"
 echo "  - Apache Spark (SPARK_HOME environment variable)"
 echo ""
 echo "Run 'sparksh --help' to get started."
+
+

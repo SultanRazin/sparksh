@@ -1,4 +1,10 @@
-export type PopupMode = "none" | "completions" | "history" | "commlog";
+export type PopupMode =
+  | "none"
+  | "completions"
+  | "history"
+  | "commlog"
+  | "functions"
+  | "function_info";
 export type Status = "starting" | "ready" | "executing" | "error" | "stopped";
 
 export type HistoryEntry = {
@@ -21,6 +27,13 @@ export type SparkInfo = {
   master: string;
 } | null;
 
+export type FunctionInfo = {
+  name: string;
+  usage: string;
+  extended: string;
+  examples: string;
+};
+
 export type DebugInfo = {
   detectedSparkVersion: string;
   jarPath: string;
@@ -31,7 +44,7 @@ export type DebugInfo = {
 };
 
 export type CommLog = {
-  direction: "send" | "recv";
+  direction: "send" | "recv" | "debug";
   timestamp: number;
   data: string;
 };

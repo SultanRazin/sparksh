@@ -1,5 +1,5 @@
-import org.apache.spark.repl.SparkILoop
 import org.apache.spark.SparkConf
+import org.apache.spark.repl.SparkILoop
 import org.apache.spark.sql.SparkSession
 import ujson._
 
@@ -19,26 +19,19 @@ object Main {
     val inputReader = new BufferedReader(new StringReader(""))
 
     val conf = new SparkConf()
-    val spark = SparkSession.builder()
-      .config(conf)
-      .getOrCreate()
+    val spark = SparkSession.builder().config(conf).getOrCreate()
 
     val settings = new Settings()
     settings.usejavacp.value = true
 
     val jarsConfig = spark.conf.getOption("spark.jars").getOrElse("")
     if (jarsConfig.nonEmpty) {
-      val jarPaths = jarsConfig.split(",")
-        .map(_.trim)
-        .filter(_.nonEmpty)
-        .map { jar =>
-          if (jar.startsWith("file:")) jar.stripPrefix("file:") else jar
-        }
-        .filter(path => new java.io.File(path).exists())
+      val jarPaths = jarsConfig.split(",").map(_.trim).filter(_.nonEmpty).map { jar =>
+        if (jar.startsWith("file:")) jar.stripPrefix("file:") else jar
+      }.filter(path => new java.io.File(path).exists())
       if (jarPaths.nonEmpty) {
         val existingCp = settings.classpath.value
-        val newCp = if (existingCp.isEmpty) jarPaths.mkString(java.io.File.pathSeparator)
-                    else existingCp + java.io.File.pathSeparator + jarPaths.mkString(java.io.File.pathSeparator)
+        val newCp = if (existingCp.isEmpty) jarPaths.mkString(java.io.File.pathSeparator) else existingCp + java.io.File.pathSeparator + jarPaths.mkString(java.io.File.pathSeparator)
         settings.classpath.value = newCp
       }
     }
@@ -60,13 +53,30 @@ object Main {
 
     replOutput.getBuffer.setLength(0)
 
-    originalOut.println(write(Obj(
-      "status" -> "ready",
-      "sparkVersion" -> sparkVersion,
-      "scalaVersion" -> scalaVersion,
-      "master" -> master
-    )))
+    originalOut.println(write(Obj("status" -> "ready", "sparkVersion" -> sparkVersion, "scalaVersion" -> scalaVersion, "master" -> master)))
     originalOut.flush()
+
+    try {
+      val functionRegistry = spark.sessionState.functionRegistry
+      val functions = functionRegistry.listFunction()
+      val functionsDesc: List[Obj] = functions.map(f => {
+        val info = functionRegistry.lookupFunction(f)
+        val usage = info.map(_.getUsage).getOrElse("")
+        val extended = info.map(_.getExtended).getOrElse("")
+        val examples = info.map(_.getExamples).getOrElse("")
+        Obj(
+          "name" -> f.funcName,
+          "usage" -> usage,
+          "extended" -> extended,
+          "examples" -> examples
+        )
+      }).toList
+      originalOut.println(write(Obj("type" -> "functions", "functions" -> functionsDesc)))
+      originalOut.flush()
+    } catch {
+      case _: Exception => // Ignore errors in listing functions
+    }
+
 
     val stdin = new BufferedReader(new InputStreamReader(System.in))
     var running = true
@@ -81,8 +91,7 @@ object Main {
           val cmd = request("cmd").str
 
           cmd match {
-            case "eval" =>
-              val code = request("code").str
+            case "eval" => val code = request("code").str
               replOutput.getBuffer.setLength(0)
               switchableOut.startCapture()
 
@@ -100,30 +109,19 @@ object Main {
                 case Results.Incomplete => "incomplete"
               }
               originalOut.println(write(Obj("status" -> status, "output" -> output)))
-
-            case "complete" =>
-              val code = request("code").str
+            case "complete" => val code = request("code").str
               val cursor = request.obj.get("cursor").map(_.num.toInt).getOrElse(code.length)
               try {
                 import scala.tools.nsc.interpreter.PresentationCompilerCompleter
                 val completer = new PresentationCompilerCompleter(repl.intp)
                 val result = completer.complete(code, cursor)
-                originalOut.println(write(Obj(
-                  "status" -> "ok",
-                  "completions" -> result.candidates.toList,
-                  "cursor" -> result.cursor
-                )))
+                originalOut.println(write(Obj("status" -> "ok", "completions" -> result.candidates.toList, "cursor" -> result.cursor)))
               } catch {
-                case _: Exception =>
-                  originalOut.println(write(Obj("status" -> "ok", "completions" -> Arr(), "cursor" -> cursor)))
+                case _: Exception => originalOut.println(write(Obj("status" -> "ok", "completions" -> Arr(), "cursor" -> cursor)))
               }
-
-            case "quit" =>
-              running = false
+            case "quit" => running = false
               originalOut.println(write(Obj("status" -> "bye")))
-
-            case _ =>
-              originalOut.println(write(Obj("status" -> "error", "output" -> s"Unknown command: $cmd")))
+            case _ => originalOut.println(write(Obj("status" -> "error", "output" -> s"Unknown command: $cmd")))
           }
         } catch {
           case e: Exception => switchableOut.stopCapture()

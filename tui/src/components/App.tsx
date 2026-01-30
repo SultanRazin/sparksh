@@ -8,6 +8,7 @@ import { FilterablePopup } from "./FilterablePopup";
 import { CommLogPanel } from "./CommLogPanel";
 import { ShortcutsBar } from "./ShortcutsBar";
 import type { PopupMode, Status } from "../types";
+import { FunctionInfoPanel } from "./FunctionInfoPanel.tsx";
 
 export function App() {
   const {
@@ -18,6 +19,7 @@ export function App() {
     progress,
     sparkInfo,
     debugInfo,
+    functions,
     evaluate,
     complete,
   } = useSpark();
@@ -26,6 +28,7 @@ export function App() {
   const [completionItems, setCompletionItems] = useState<string[]>([]);
   const [completionCursor, setCompletionCursor] = useState(0);
   const [inputHeight, setInputHeight] = useState(5);
+  const [selectedFunction, setSelectedFunction] = useState("");
   const ref = useRef<TextareaRenderable | null>(null);
 
   const resetInputWithNewCode = (newCode: string) => {
@@ -37,6 +40,11 @@ export function App() {
     }
     setCode(newCode);
     setPopupMode("none");
+  };
+
+  const applyFunction = (functionName: string) => {
+    setSelectedFunction(functionName);
+    setPopupMode("function_info");
   };
 
   const submit = async () => {
@@ -104,8 +112,11 @@ export function App() {
         }}
         onSubmit={submit}
         onRequestCompletion={requestCompletion}
-        onOpenHistory={() => historyCommands.length > 0 && setPopupMode("history")}
+        onOpenHistory={() =>
+          historyCommands.length > 0 && setPopupMode("history")
+        }
         onOpenCommLog={() => setPopupMode("commlog")}
+        onOpenFunctions={() => setPopupMode("functions")}
         onResizeUp={() => setInputHeight(Math.min(10, inputHeight + 1))}
         onResizeDown={() => setInputHeight(Math.max(1, inputHeight - 1))}
         onLoadPreviousCommand={resetInputWithNewCode}
@@ -133,6 +144,23 @@ export function App() {
 
       {popupMode === "commlog" && (
         <CommLogPanel onClose={() => setPopupMode("none")} />
+      )}
+
+      {popupMode === "functions" && (
+        <FilterablePopup
+          items={functions.map((f) => f.name) as string[]}
+          placeholder="Search functions..."
+          onSelect={applyFunction}
+          onClose={() => setPopupMode("none")}
+        />
+      )}
+
+      {popupMode === "function_info" && (
+        <FunctionInfoPanel
+          functionName={selectedFunction}
+          functions={functions}
+          onClose={() => setPopupMode("functions")}
+        />
       )}
 
       <ShortcutsBar />

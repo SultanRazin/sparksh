@@ -67,6 +67,27 @@ object Main {
     )))
     originalOut.flush()
 
+    try {
+      val functionRegistry = spark.sessionState.functionRegistry
+      val functions = functionRegistry.listFunction()
+      val functionsDesc: List[Obj] = functions.map(f => {
+        val info = functionRegistry.lookupFunction(f)
+        val usage = info.map(_.getUsage).getOrElse("")
+        val extended = info.map(_.getExtended).getOrElse("")
+        val examples = info.map(_.getExamples).getOrElse("")
+        Obj(
+          "name" -> f.funcName,
+          "usage" -> usage,
+          "extended" -> extended,
+          "examples" -> examples
+        )
+      }).toList
+      originalOut.println(write(Obj("type" -> "functions", "functions" -> functionsDesc)))
+      originalOut.flush()
+    } catch {
+      case _: Exception => // Ignore errors in listing functions
+    }
+
     val stdin = new BufferedReader(new InputStreamReader(System.in))
     var running = true
 

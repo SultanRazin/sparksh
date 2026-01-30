@@ -7,7 +7,7 @@ export function getCommLogs(): CommLog[] {
   return commLogs;
 }
 
-export function addCommLog(direction: "send" | "recv", data: string) {
+export function addCommLog(direction: "send" | "recv" | "debug", data: string) {
   commLogs.push({ direction, timestamp: Date.now(), data });
   if (commLogs.length > MAX_LOGS) {
     commLogs.shift();

@@ -10,6 +10,7 @@ import type {
   Progress,
   SparkInfo,
   DebugInfo,
+  FunctionInfo,
 } from "../types";
 
 let JAR_PATH = "";
@@ -29,6 +30,7 @@ export function useSpark() {
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<Progress>(null);
   const [sparkInfo, setSparkInfo] = useState<SparkInfo>(null);
+  const [functions, setFunctions] = useState<FunctionInfo[]>([]);
   const [debugInfo, setDebugInfo] = useState<DebugInfo>({
     detectedSparkVersion: "",
     jarPath: "",
@@ -127,6 +129,9 @@ export function useSpark() {
                 master: res.master ?? "unknown",
               });
               setStatus("ready");
+            } else if (res.type === "functions") {
+              setFunctions(res.functions);
+              addCommLog("debug", `Received ${res.functions.length} functions`);
             } else if (res.status === "bye") setStatus("stopped");
             else if (pendingRef.current) {
               pendingRef.current(res);
@@ -201,6 +206,7 @@ export function useSpark() {
     progress,
     sparkInfo,
     debugInfo,
+    functions,
     evaluate,
     complete,
   };
