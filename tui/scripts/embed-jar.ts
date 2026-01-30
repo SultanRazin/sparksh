@@ -2,7 +2,7 @@ import { resolve } from "path";
 
 const jarPath = resolve(
   import.meta.dir,
-  "../../spark/target/scala-2.13/sparksh-backend-assembly-0.1.4.jar",
+  "../../spark/target/scala-2.13/sparksh-backend.jar",
 );
 const outputPath = resolve(import.meta.dir, "../src/jarData.ts");
 

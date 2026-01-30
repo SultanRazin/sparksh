@@ -14,6 +14,8 @@ libraryDependencies += "com.lihaoyi" %% "ujson" % "4.0.0"
 
 fork := true
 
+assembly / assemblyJarName := "sparksh-backend.jar"
+
 assembly / assemblyMergeStrategy := {
   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
   case _ => MergeStrategy.first

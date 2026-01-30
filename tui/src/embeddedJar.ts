@@ -2,12 +2,11 @@ import { resolve } from "path";
 
 const CACHE_DIR = resolve(process.env.HOME || "", ".sparksh");
 const CACHED_JAR = resolve(CACHE_DIR, "sparksh-backend.jar");
-const VERSION = "0.1.4";
-const VERSION_FILE = resolve(CACHE_DIR, ".version");
+const HASH_FILE = resolve(CACHE_DIR, ".hash");
 
 const DEV_JAR = resolve(
   import.meta.dir,
-  "../../spark/target/scala-2.13/sparksh-backend-assembly-0.1.4.jar",
+  "../../spark/target/scala-2.13/sparksh-backend.jar",
 );
 
 export async function getJarPath(): Promise<string> {
@@ -26,11 +25,15 @@ export async function getJarPath(): Promise<string> {
       mkdirSync(CACHE_DIR, { recursive: true });
     } catch {}
 
+    const hasher = new Bun.CryptoHasher("md5");
+    hasher.update(JAR_BASE64.slice(0, 1000));
+    const currentHash = hasher.digest("hex");
+
     let needsExtract = true;
     try {
-      const cachedVersion = await Bun.file(VERSION_FILE).text();
+      const cachedHash = await Bun.file(HASH_FILE).text();
       const cachedJarExists = await Bun.file(CACHED_JAR).exists();
-      if (cachedVersion.trim() === VERSION && cachedJarExists) {
+      if (cachedHash.trim() === currentHash && cachedJarExists) {
         needsExtract = false;
       }
     } catch {}
@@ -38,7 +41,7 @@ export async function getJarPath(): Promise<string> {
     if (needsExtract) {
       const jarBytes = Buffer.from(JAR_BASE64, "base64");
       await Bun.write(CACHED_JAR, jarBytes);
-      await Bun.write(VERSION_FILE, VERSION);
+      await Bun.write(HASH_FILE, currentHash);
     }
 
     return CACHED_JAR;
