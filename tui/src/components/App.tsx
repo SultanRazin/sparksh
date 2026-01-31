@@ -10,6 +10,7 @@ import { ShortcutsBar } from "./ShortcutsBar";
 import type { PopupMode, Status } from "../types";
 import { FunctionInfoPanel } from "./FunctionInfoPanel.tsx";
 import { ConfigsInfoPanel } from "./ConfigsInfoPanel.tsx";
+import { TailStderrPanel } from "./TailStderrPanel.tsx";
 
 export function App() {
   const {
@@ -126,6 +127,7 @@ export function App() {
         onOpenCommLog={() => setPopupMode("commlog")}
         onOpenFunctions={() => setPopupMode("functions")}
         onOpenConfigs={() => setPopupMode("configs")}
+        onOpenTail={() => setPopupMode("tail_stderr")}
         onResizeUp={() => setInputHeight(Math.min(10, inputHeight + 1))}
         onResizeDown={() => setInputHeight(Math.max(1, inputHeight - 1))}
         onLoadPreviousCommand={resetInputWithNewCode}
@@ -186,6 +188,13 @@ export function App() {
           configName={selectedConfig}
           configs={configs}
           onClose={() => setPopupMode("configs")}
+        />
+      )}
+
+      {popupMode === "tail_stderr" && (
+        <TailStderrPanel
+          debugInfo={debugInfo}
+          onClose={() => setPopupMode("none")}
         />
       )}
 

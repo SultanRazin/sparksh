@@ -6,7 +6,8 @@ export type PopupMode =
   | "functions"
   | "function_info"
   | "configs"
-  | "config_info";
+  | "config_info"
+  | "tail_stderr";
 
 export type Status = "starting" | "ready" | "executing" | "error" | "stopped";
 
