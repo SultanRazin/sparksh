@@ -11,19 +11,21 @@ A modern terminal UI for Apache Spark with syntax highlighting, auto-completion,
 
 ## Installation
 
+### Standalone Binary (portable)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sultanrazin/sparksh/master/install.sh | bash
+```
+
+Downloads a self-contained binary.
+
 ### Using Bun
 
 ```bash
 bun install -g sparksh
 ```
 
-### One-liner install (macOS/Linux)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sultanrazin/sparksh/master/install.sh | bash
-```
-
-This automatically detects your OS and architecture, then downloads the correct binary.
+Requires [Bun](https://bun.sh/) runtime on the machine.
 
 ## Usage
 
