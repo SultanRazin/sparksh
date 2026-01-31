@@ -76,6 +76,15 @@ jobs:
           bun run scripts/embed-jar.ts
           bun run scripts/embed-configs.ts
 
+      - name: Upload JARs artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: scala-jars
+          path: |
+            spark/target/scala-2.12/*.jar
+            spark/target/scala-2.13/*.jar
+
       - name: Build binary
         run: |
           cd tui
@@ -114,39 +123,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '11'
-
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Build Scala backends
-        run: |
-          cd spark
-          mkdir -p ../tmp-jars
-
-          sbt "set sparkVersion := \"3.4.4\"" clean assembly
-          cp target/scala-2.12/sparksh-backend-spark34.jar ../tmp-jars/
-
-          sbt "set sparkVersion := \"3.5.4\"" clean assembly
-          cp target/scala-2.12/sparksh-backend-spark35.jar ../tmp-jars/
-
-          sbt "set sparkVersion := \"4.0.0\"" clean assembly
-          cp target/scala-2.13/sparksh-backend-spark40.jar ../tmp-jars/
-
-          # Copy back for embed script
-          mkdir -p target/scala-2.12 target/scala-2.13
-          cp ../tmp-jars/sparksh-backend-spark34.jar target/scala-2.12/
-          cp ../tmp-jars/sparksh-backend-spark35.jar target/scala-2.12/
-          cp ../tmp-jars/sparksh-backend-spark40.jar target/scala-2.13/
+      - name: Download JARs artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: scala-jars
+          path: spark/target
 
       - name: Install dependencies
         run: |
