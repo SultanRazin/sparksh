@@ -131,16 +131,22 @@ jobs:
       - name: Build Scala backends
         run: |
           cd spark
-          mkdir -p target/scala-2.12 target/scala-2.13
+          mkdir -p ../tmp-jars
 
           sbt "set sparkVersion := \"3.4.4\"" clean assembly
-          cp target/scala-2.12/sparksh-backend-spark34.jar target/scala-2.12/
+          cp target/scala-2.12/sparksh-backend-spark34.jar ../tmp-jars/
 
           sbt "set sparkVersion := \"3.5.4\"" clean assembly
-          cp target/scala-2.12/sparksh-backend-spark35.jar target/scala-2.12/
+          cp target/scala-2.12/sparksh-backend-spark35.jar ../tmp-jars/
 
           sbt "set sparkVersion := \"4.0.0\"" clean assembly
-          cp target/scala-2.13/sparksh-backend-spark40.jar target/scala-2.13/
+          cp target/scala-2.13/sparksh-backend-spark40.jar ../tmp-jars/
+
+          # Copy back for embed script
+          mkdir -p target/scala-2.12 target/scala-2.13
+          cp ../tmp-jars/sparksh-backend-spark34.jar target/scala-2.12/
+          cp ../tmp-jars/sparksh-backend-spark35.jar target/scala-2.12/
+          cp ../tmp-jars/sparksh-backend-spark40.jar target/scala-2.13/
 
       - name: Install dependencies
         run: |
