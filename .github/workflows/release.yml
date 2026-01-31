@@ -70,10 +70,11 @@ jobs:
           cd tui
           bun install
 
-      - name: Embed JARs
+      - name: Embed JARs and configs
         run: |
           cd tui
           bun run scripts/embed-jar.ts
+          bun run scripts/embed-configs.ts
 
       - name: Build binary
         run: |
@@ -105,3 +106,63 @@ jobs:
         with:
           files: binaries/*
           generate_release_notes: true
+
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build Scala backends
+        run: |
+          cd spark
+          mkdir -p target/scala-2.12 target/scala-2.13
+
+          sbt "set sparkVersion := \"3.4.4\"" clean assembly
+          cp target/scala-2.12/sparksh-backend-spark34.jar target/scala-2.12/
+
+          sbt "set sparkVersion := \"3.5.4\"" clean assembly
+          cp target/scala-2.12/sparksh-backend-spark35.jar target/scala-2.12/
+
+          sbt "set sparkVersion := \"4.0.0\"" clean assembly
+          cp target/scala-2.13/sparksh-backend-spark40.jar target/scala-2.13/
+
+      - name: Install dependencies
+        run: |
+          cd tui
+          bun install
+
+      - name: Embed JARs and configs
+        run: |
+          cd tui
+          bun run scripts/embed-jar.ts
+          bun run scripts/embed-configs.ts
+
+      - name: Set version from tag
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          cd tui
+          bun -e "const pkg = require('./package.json'); pkg.version = '$VERSION'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n')"
+
+      - name: Publish to npm
+        run: |
+          cd tui
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

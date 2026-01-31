@@ -11,10 +11,16 @@ A modern terminal UI for Apache Spark with syntax highlighting, auto-completion,
 
 ## Installation
 
+### Using Bun
+
+```bash
+bun install -g sparksh
+```
+
 ### One-liner install (macOS/Linux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SultanRazin/sparksh/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sultanrazin/sparksh/master/install.sh | bash
 ```
 
 This automatically detects your OS and architecture, then downloads the correct binary.
@@ -47,6 +53,6 @@ SparkSH automatically detects your Spark version and uses the appropriate backen
 ## Built With
 
 - [Bun](https://bun.sh/) - JavaScript runtime and bundler
-- [OpenTUI](https://github.com/anomalyco/opentui/) - Terminal UI framework
+- [OpenTUI](https://github.com/AnomalyCo/opentui) - Terminal UI framework
 - [Shiki](https://shiki.style/) - Syntax highlighting
 - [Scala](https://www.scala-lang.org/) - Backend language

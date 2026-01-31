@@ -1,15 +1,43 @@
 {
-  "name": "tui",
-  "module": "src/index.tsx",
+  "name": "sparksh",
+  "version": "0.1.10",
+  "description": "A modern terminal UI for Apache Spark with syntax highlighting, auto-completion, and a better interactive experience",
   "type": "module",
-  "private": true,
+  "bin": {
+    "sparksh": "src/index.tsx"
+  },
+  "files": [
+    "src"
+  ],
   "scripts": {
     "dev": "bun run --watch src/index.tsx",
     "build": "bun build --compile --minify src/index.tsx --outfile ../dist/sparksh"
   },
+  "keywords": [
+    "spark",
+    "apache-spark",
+    "repl",
+    "shell",
+    "terminal",
+    "tui",
+    "opentui",
+    "scala"
+  ],
+  "author": "Sultan Razin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sultanrazin/sparksh.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sultanrazin/sparksh/issues"
+  },
+  "homepage": "https://github.com/sultanrazin/sparksh#readme",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "devDependencies": {
-    "@types/bun": "latest",
-    "shiki": "^3.21.0"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -18,6 +46,7 @@
     "@opentui/core": "^0.1.75",
     "@opentui/react": "^0.1.75",
     "prettier": "^3.8.1",
-    "react": "^19.2.3"
+    "react": "^19.2.3",
+    "shiki": "^3.21.0"
   }
 }
