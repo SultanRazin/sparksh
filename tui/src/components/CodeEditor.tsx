@@ -55,7 +55,7 @@ export function CodeEditor({
       return;
     }
 
-    if ((key.name === "return" && (key.ctrl || key.option)) || (key.name === "j" && (key.ctrl || key.option))) {
+    if ((key.name === "return" && (key.ctrl || key.option)) || (key.name === "j" && (key.ctrl || key.option)) || (key.name === "e" && (key.ctrl))) {
       onSubmit();
       return;
     }
