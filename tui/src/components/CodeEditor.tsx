@@ -55,42 +55,42 @@ export function CodeEditor({
       return;
     }
 
-    if ((key.name === "return" && key.ctrl) || (key.name === "j" && key.ctrl)) {
+    if ((key.name === "return" && (key.ctrl || key.option)) || (key.name === "j" && (key.ctrl || key.option))) {
       onSubmit();
       return;
     }
 
-    if (key.name === "r" && key.ctrl) {
+    if (key.name === "r" && (key.ctrl || key.option)) {
       onOpenHistory();
       return;
     }
 
-    if (key.name === "l" && key.ctrl) {
+    if (key.name === "l" && (key.ctrl || key.option)) {
       onOpenCommLog();
       return;
     }
 
-    if (key.name === "f" && key.ctrl) {
+    if (key.name === "f" && (key.ctrl || key.option)) {
       onOpenFunctions();
       return;
     }
 
-    if (key.name === "p" && key.ctrl) {
+    if (key.name === "p" && (key.ctrl || key.option)) {
       onOpenConfigs();
       return;
     }
 
-    if (key.name === "n" && key.ctrl) {
+    if (key.name === "n" && (key.ctrl || key.option)) {
       onOpenTail();
       return;
     }
 
-    if (key.name === "up" && key.ctrl) {
+    if (key.name === "up" && (key.ctrl || key.option)) {
       onResizeUp();
       return;
     }
 
-    if (key.name === "down" && key.ctrl) {
+    if (key.name === "down" && (key.ctrl || key.option)) {
       onResizeDown();
       return;
     }

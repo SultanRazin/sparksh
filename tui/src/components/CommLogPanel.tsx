@@ -8,7 +8,7 @@ type Props = {
 
 export function CommLogPanel({ onClose }: Props) {
   useKeyboard((key) => {
-    if (key.name === "escape" || (key.name === "l" && key.ctrl)) {
+    if (key.name === "escape" || (key.name === "l" && (key.ctrl || key.option))) {
       onClose();
     }
   });

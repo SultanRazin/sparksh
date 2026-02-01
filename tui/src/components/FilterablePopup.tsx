@@ -30,11 +30,11 @@ export function FilterablePopup({
   const visible = filtered.slice(start, start + maxVisible);
 
   useKeyboard((key) => {
-    if (key.name === "down" || (key.name === "n" && key.ctrl)) {
+    if (key.name === "down" || (key.name === "n" && (key.ctrl || key.option))) {
       setIdx((i) => Math.min(i + 1, filtered.length - 1));
       return;
     }
-    if (key.name === "up" || (key.name === "p" && key.ctrl)) {
+    if (key.name === "up" || (key.name === "p" && (key.ctrl || key.option))) {
       setIdx((i) => Math.max(i - 1, 0));
       return;
     }
