@@ -9,10 +9,10 @@
         "@opentui/react": "^0.1.75",
         "prettier": "^3.8.1",
         "react": "^19.2.3",
+        "shiki": "^3.21.0",
       },
       "devDependencies": {
         "@types/bun": "latest",
-        "shiki": "^3.21.0",
       },
       "peerDependencies": {
         "typescript": "^5",

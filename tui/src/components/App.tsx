@@ -94,7 +94,7 @@ export function App() {
   const historyCommands = Array.from(new Set(combinedHistory)).reverse();
 
   return (
-    <box style={{ flexDirection: "column", flexGrow: 1, position: "relative" }}>
+    <box style={{ flexDirection: "column", flexGrow: 1, position: "relative", backgroundColor: "#121212" }}>
       <StatusBar
         status={status as Status}
         error={error}
