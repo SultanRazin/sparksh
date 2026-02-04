@@ -1,4 +1,3 @@
-import { useRef, useState } from "react";
 import type { TextareaRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { syntaxStyle } from "../utils/highlight";

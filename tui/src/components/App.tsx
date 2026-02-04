@@ -1,18 +1,22 @@
 import { useRef, useState } from "react";
 import type { TextareaRenderable } from "@opentui/core";
+import { useRenderer } from "@opentui/react";
 import { useSpark } from "../hooks/useSpark";
+import { copyToClipboard } from "../utils/clipboard";
 import { StatusBar } from "./StatusBar";
 import { OutputHistory } from "./OutputHistory";
 import { CodeEditor } from "./CodeEditor";
 import { FilterablePopup } from "./FilterablePopup";
 import { CommLogPanel } from "./CommLogPanel";
 import { ShortcutsBar } from "./ShortcutsBar";
+import { Toast } from "./Toast";
 import type { PopupMode, Status } from "../types";
 import { FunctionInfoPanel } from "./FunctionInfoPanel.tsx";
 import { ConfigsInfoPanel } from "./ConfigsInfoPanel.tsx";
 import { TailStderrPanel } from "./TailStderrPanel.tsx";
 
 export function App() {
+  const renderer = useRenderer();
   const {
     status,
     history,
@@ -26,6 +30,7 @@ export function App() {
     evaluate,
     complete,
   } = useSpark();
+  const [toast, setToast] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [popupMode, setPopupMode] = useState<PopupMode>("none");
   const [completionItems, setCompletionItems] = useState<string[]>([]);
@@ -93,8 +98,26 @@ export function App() {
   ];
   const historyCommands = Array.from(new Set(combinedHistory)).reverse();
 
+  const handleMouseUp = async () => {
+    const selection = (renderer as any).getSelection?.();
+    const text = selection?.getSelectedText?.();
+    if (text && text.length > 0) {
+      const base64 = Buffer.from(text).toString("base64");
+      const osc52 = `\x1b]52;c;${base64}\x07`;
+      const finalOsc52 = process.env["TMUX"] ? `\x1bPtmux;\x1b${osc52}\x1b\\` : osc52;
+      (renderer as any).writeOut?.(finalOsc52);
+      await copyToClipboard(text);
+      setToast("Copied!");
+      setTimeout(() => setToast(null), 1500);
+      (renderer as any).clearSelection?.();
+    }
+  };
+
   return (
-    <box style={{ flexDirection: "column", flexGrow: 1, position: "relative", backgroundColor: "#121212" }}>
+    <box
+      style={{ flexDirection: "column", flexGrow: 1, position: "relative", backgroundColor: "#121212" }}
+      onMouseUp={handleMouseUp}
+    >
       <StatusBar
         status={status as Status}
         error={error}
@@ -199,6 +222,7 @@ export function App() {
       )}
 
       <ShortcutsBar />
+      <Toast message={toast} />
     </box>
   );
 }

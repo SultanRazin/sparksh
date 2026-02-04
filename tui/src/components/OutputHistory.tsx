@@ -23,7 +23,7 @@ export function OutputHistory({ history, status, debugInfo, focused }: OutputHis
         <WelcomeScreen status={status} debugInfo={debugInfo} />
       ) : (
         history.flatMap((h, i) => [
-          <text key={`c${i}`} style={{ fg: "#6cf" }}>
+          <text key={`c${i}`} style={{ fg: "#6cf" }} selectable>
             {">>> " + h.code}
           </text>,
           ...h.output.split("\n").map((line, j) => (
@@ -33,6 +33,7 @@ export function OutputHistory({ history, status, debugInfo, focused }: OutputHis
             >
               <text
                 key={`o${i}-${j}`}
+                selectable
                 content={
                   h.isError ? errorLine(line) : highlightOutputLine(line)
                 }
